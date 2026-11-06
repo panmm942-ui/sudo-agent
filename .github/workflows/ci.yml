@@ -70,7 +70,7 @@ jobs:
         run: cargo test --manifest-path src-tauri/Cargo.toml --locked --features tauri/custom-protocol --lib
       - name: Build Windows installer (NSIS)
         run: npx tauri build --bundles nsis
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sudo-windows-x64-${{ github.sha }}
           path: |

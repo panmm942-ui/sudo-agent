@@ -75,7 +75,7 @@ jobs:
           $m = [regex]::Match($text, "(?ms)^## \[$([regex]::Escape($v))\][^\n]*\n(.*?)(?=^## \[|\z)")
           [IO.File]::WriteAllText('release-notes.md', $m.Groups[1].Value.Trim() + "`n`nVerify downloads with ``SHA256SUMS.txt``. The executables are not code-signed, so Windows SmartScreen may ask for confirmation.`n")
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sudo-${{ env.TAG }}-windows-x64
           path: dist-release/*
