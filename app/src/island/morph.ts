@@ -35,7 +35,14 @@ export function finishMorph(): void {
  * Reshapes `from` into `to` inside `box`. `hide` are the real elements under the box (the old and
  * new page's logo / art); they stay invisible until the morph hands back to them.
  */
-export function morph(from: MorphShape, to: MorphShape, box: MorphBox, artwork: string | null, hide: () => HTMLElement[], duration = 560): Promise<void> {
+export type MorphHooks = {
+  /** Linear progress 0..1, every frame while the morph runs. */
+  onprogress?: (t: number) => void;
+  /** The morph ended (finished or cut short by a newer page change). */
+  onend?: () => void;
+};
+
+export function morph(from: MorphShape, to: MorphShape, box: MorphBox, artwork: string | null, hide: () => HTMLElement[], duration = 520, hooks: MorphHooks = {}): Promise<void> {
   finishMorph();
   const a = geometry(from, box), b = geometry(to, box);
   const ring = Math.max(1.5, box.width * LOGO.stroke);
@@ -61,7 +68,8 @@ export function morph(from: MorphShape, to: MorphShape, box: MorphBox, artwork: 
   // The new page mounts a frame later; hide its element as soon as it exists.
   const raf = requestAnimationFrame(conceal);
 
-  const ease = "cubic-bezier(.65,0,.35,1)";
+  // Quick to leave, long soft landing: reads as one object settling into its new form.
+  const ease = "cubic-bezier(.32,.72,0,1)";
   const frame = (g: Geometry) => ({ left: `${g.x}px`, top: `${g.y}px`, width: `${g.w}px`, height: `${g.h}px`, borderRadius: `${g.r}px` });
   const shift = (g: Geometry) => ({ transform: `translate(${-g.x}px,${-g.y}px)` });
   const timing = { duration, easing: ease, fill: "forwards" as const };
@@ -69,7 +77,16 @@ export function morph(from: MorphShape, to: MorphShape, box: MorphBox, artwork: 
   const outlineOn = (s: MorphShape) => (s === "logo" ? 1 : 0);
   const animations = [
     shape.animate([frame(a), frame(b)], timing),
-    cover.animate([{ ...shift(a), opacity: coverOn(from) }, { ...shift(b), opacity: coverOn(to) }], timing),
+    // Cover ↔ orb: the cover melts (blur, a little smaller) while the live orb grows out of it in
+    // the same place (the island drives the orb from `onprogress`), so nothing slides or pops.
+    from === "orb" || to === "orb"
+      ? cover.animate(
+          from === "orb"
+            ? [{ ...shift(a), opacity: 0, filter: "blur(10px)", scale: "0.9" }, { opacity: 0, filter: "blur(10px)", scale: "0.9", offset: 0.25 }, { ...shift(b), opacity: coverOn(to), filter: "blur(0px)", scale: "1" }]
+            : [{ ...shift(a), opacity: coverOn(from), filter: "blur(0px)", scale: "1" }, { opacity: 0, filter: "blur(10px)", scale: "0.9", offset: 0.7 }, { ...shift(b), opacity: 0, filter: "blur(10px)", scale: "0.9" }],
+          timing,
+        )
+      : cover.animate([{ ...shift(a), opacity: coverOn(from) }, { ...shift(b), opacity: coverOn(to) }], timing),
     // The outline leaves quickly (or arrives late) so the cover and the ring never muddy each other.
     outline.animate(
       from === "logo"
@@ -82,10 +99,20 @@ export function morph(from: MorphShape, to: MorphShape, box: MorphBox, artwork: 
   let done = false;
   let resolve!: () => void;
   const finished = new Promise<void>((r) => (resolve = r));
+  const started = performance.now();
+  let tick = 0;
+  const progress = (now: number) => {
+    hooks.onprogress?.(Math.min(1, (now - started) / duration));
+    if (!done) tick = requestAnimationFrame(progress);
+  };
+  if (hooks.onprogress) { hooks.onprogress(0); tick = requestAnimationFrame(progress); }
   const finish = () => {
     if (done) return;
     done = true;
     cancelAnimationFrame(raf);
+    cancelAnimationFrame(tick);
+    hooks.onprogress?.(1);
+    hooks.onend?.();
     // The overlay ends exactly on the real element, so hand over in the same frame.
     for (const el of hidden) el.style.opacity = "";
     for (const animation of animations) animation.cancel();

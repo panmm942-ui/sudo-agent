@@ -332,6 +332,25 @@ fn spotify_uri_for(selection:Selection,resolve:impl FnOnce(&str)->Result<Option<
     if valid_uri(&uri){Ok(uri)}else{Err("This Spotify selection is invalid. Search again.".into())}
 }
 
+/// Sudo AI: "play X". Searches like the island's song search and plays the best match on the
+/// active Spotify device, or opens it in Spotify when playback can't be started from here.
+/// Returns (title, artist, what happened).
+pub(crate) fn play_query(query:&str)->Result<(String,String,PlayOutcome),String>{
+    let term=validate_query(query)?;
+    let found=search_with_fallback(&term,spotify_catalogue_search,|term|deezer_search(&public_client()?,term))?;
+    let best=found.into_iter().next().ok_or_else(||format!("I couldn't find {term}."))?;
+    let (title,artist)=(best.title.clone(),best.artist.clone());
+    let selection=parse_selection(&best.uri).ok_or("That song result is invalid.")?;
+    let search=format!("{title} {artist}");
+    let Some(uri)=spotify_target(selection,Some(&search),|id|odesli_spotify_id(&public_client()?,id),crate::spotify::open_search_in_app)? else {return Ok((title,artist,PlayOutcome::Searched));};
+    let id=uri.trim_start_matches("spotify:track:").to_owned();
+    let outcome=match crate::spotify::current_key(){
+        Some(key)=>settle(web_api_play(&uri,&key),||crate::spotify::open_track_in_app(&id))?,
+        None=>{crate::spotify::open_track_in_app(&id)?;PlayOutcome::Opened}
+    };
+    Ok((title,artist,outcome))
+}
+
 #[tauri::command]
 pub async fn spotify_play_track(uri:String,track_key:String,search:Option<String>)->Result<PlayOutcome,String>{
     let selection=parse_selection(&uri).ok_or("This song selection is invalid. Search again.")?;
