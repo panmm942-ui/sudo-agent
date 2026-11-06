@@ -36,7 +36,7 @@ jobs:
           if ($pkg -ne $v -or $conf -ne $v -or $cargo -ne $v) { throw "Version mismatch: bump all three files to $v before tagging." }
           if (-not (Select-String -Path CHANGELOG.md -Pattern "^## \[$([regex]::Escape($v))\]" -Quiet)) { throw "CHANGELOG.md has no '## [$v]' section." }
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
