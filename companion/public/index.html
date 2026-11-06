@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111414">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark">
+  <title>Sudo · Companion</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body data-view="companion">
+  <main class="shell">
+    <header class="app-header"><a class="wordmark" href="/" aria-label="Sudo home">sudo<span class="wordmark-dot">.</span></a><span class="header-label">Your companion</span></header>
+    <section id="pair-view" class="pair-view" aria-labelledby="pair-title">
+      <div class="connection-mark" aria-hidden="true">↗</div>
+      <p class="eyebrow">A little closer</p><h1 id="pair-title">Your day.<br>Within reach.</h1>
+      <p class="intro">A shared space for your PC and phone. Keep a thought, start a focus session, or send something back to Sudo.</p>
+      <p id="pair-status" class="notice" role="status">In Sudo on your PC, open Alarm Settings → Online companion, then scan the pairing QR code.</p>
+      <button id="pair-retry" type="button" hidden>Try pairing again</button>
+      <p class="fine-print">Private to your paired phone. This browser keeps an access key on this device. You can revoke it from Sudo on your PC.</p>
+    </section>
+    <div id="companion-view" hidden>
+      <div class="connection-line"><span id="connection-status" class="status-text" role="status">Connecting…</span><button id="refresh" class="text-button" type="button">Refresh</button></div>
+      <p id="global-error" class="error" role="alert" hidden></p>
+      <section class="focus-panel" aria-labelledby="focus-heading">
+        <div class="section-heading"><h1 id="focus-heading">Time for one thing.</h1><span id="focus-state" class="eyebrow">Focus</span></div>
+        <p id="countdown" class="countdown" aria-label="Focus time remaining">25:00</p>
+        <p id="focus-caption" class="caption">Choose a little uninterrupted time.</p>
+        <div class="focus-controls"><label class="minutes-field" for="focus-minutes"><span>Minutes</span><input id="focus-minutes" type="number" min="1" max="180" step="1" value="25" inputmode="numeric"></label><button id="focus-start" class="primary" type="button">Start focus</button><button id="focus-reset" class="secondary" type="button">Reset</button></div>
+        <p id="focus-feedback" class="feedback" role="status"></p>
+      </section>
+      <section class="workspace-panel" aria-labelledby="note-heading">
+        <div class="section-heading"><h2 id="note-heading">A thought to keep</h2><span class="section-index" aria-hidden="true">01</span></div>
+        <label class="sr-only" for="note">Shared note</label><textarea id="note" maxlength="2000" rows="5" placeholder="What’s on your mind?"></textarea>
+        <div class="editor-footer"><p id="note-feedback" class="feedback" role="status">Shared with Sudo on your PC.</p><button id="note-save" class="secondary" type="button" disabled>Save note</button></div>
+      </section>
+      <section class="workspace-panel" aria-labelledby="send-heading">
+        <div class="section-heading"><h2 id="send-heading">Send to Sudo</h2><span class="section-index" aria-hidden="true">02</span></div>
+        <p class="section-description">Leave a link or a few words in your PC inbox.</p>
+        <form id="send-form"><label class="sr-only" for="send-text">Message for your PC</label><textarea id="send-text" maxlength="2000" rows="2" placeholder="A link, a reminder, a small idea…" required></textarea><div class="editor-footer"><p id="send-feedback" class="feedback" role="status"></p><button id="send-button" class="primary" type="submit">Send to PC <span aria-hidden="true">↗</span></button></div></form>
+        <p id="inbox-status" class="caption"></p>
+      </section>
+      <details class="connection-panel" id="connection-details"><summary><span>Connection & iPhone setup</span><span class="summary-plus" aria-hidden="true">+</span></summary>
+        <div class="details-content">
+          <dl class="status-list"><div><dt>Last PC contact</dt><dd id="last-contact">Waiting for your PC</dd></div><div><dt>Schedule updated</dt><dd id="source-updated">Not available yet</dd></div><div><dt>Stored coverage</dt><dd id="coverage">Not available yet</dd></div><div><dt>Clock import reported</dt><dd id="last-import">No completed import reported</dd></div><div><dt>iPhone battery</dt><dd id="battery-status">No battery report yet</dd></div></dl>
+          <p class="caption">A recent connection does not mean the PC is awake now. Stored alarms remain available within the coverage above. Clock needs a successful Shortcut run to update.</p>
+          <a class="guide-link" href="/clock.html">Set up iPhone Clock <span aria-hidden="true">↗</span></a>
+          <details class="recipe"><summary>Send from your iPhone Share Sheet</summary><ol><li>In Apple Shortcuts, create <strong>Send to Sudo</strong>. Enable <strong>Show in Share Sheet</strong> and accept text and URLs.</li><li>Add a <strong>Text</strong> action and insert the <strong>Shortcut Input</strong> variable into it. This is the text or URL received from the Share Sheet.</li><li>Add <strong>Get Contents of URL</strong> using the action URL below. Choose <strong>POST</strong>, header <code>Authorization</code> = <code>Bearer [PhoneKey]</code>, and a JSON request body: <code>type</code> = Text <code>send</code>, <code>text</code> = the Text action’s output.</li><li>Run it manually and check the inbox in Sudo’s PC settings. Only show a success notification after the request succeeds.</li></ol></details>
+          <details class="recipe"><summary>Report iPhone battery with a Shortcut</summary><p>This is an optional report each time you run the Shortcut. It is not a continuous live battery connection.</p><ol><li>Create a Shortcut. Add <strong>Get Battery State</strong> (or <strong>Get Device Details</strong> → Battery Level, depending on your iOS version) and save the numeric battery percentage.</li><li>Get <strong>Is Charging</strong> using the available Battery State action. Keep it as a Boolean, not the text “true” or “false”.</li><li>Add <strong>Get Contents of URL</strong> for the action URL below, method <strong>POST</strong>, header <code>Authorization</code> = <code>Bearer [PhoneKey]</code>. JSON body: <code>type</code> = Text <code>battery</code>, <code>percent</code> = Number with the level, <code>charging</code> = Boolean with the charging state.</li><li>Test manually. Optionally add a Shortcuts battery or charger automation that runs this Shortcut. iOS permissions or actions may require interaction.</li></ol></details>
+          <div class="setup-values"><p class="field-label">Action URL</p><code class="copy-value" data-value="actionUrl"></code><button class="text-button" type="button" data-copy="actionUrl">Copy action URL</button><p class="field-label">PhoneKey</p><p class="caption">This key grants access to your companion. Only put it in your own Shortcuts.</p><div class="key-row"><input id="phone-key" type="password" aria-label="Phone access key" readonly autocomplete="off" spellcheck="false"><button id="key-reveal" class="secondary" type="button" aria-pressed="false">Show</button></div><button class="text-button" type="button" data-copy="phoneKey">Copy phone key</button></div>
+          <p id="copy-feedback" class="feedback" role="status"></p>
+          <button id="forget-phone" class="text-button danger" type="button">Forget this browser</button><p class="fine-print">Removes this browser’s saved key. To revoke access for every copy of the key, use Online companion → Revoke phone in Sudo on your PC.</p>
+        </div>
+      </details>
+      <footer class="app-footer">A small space. In sync with your day.</footer>
+    </div>
+  </main>
+</body>
+</html>

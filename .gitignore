@@ -1,0 +1,15 @@
+/models/
+.venv/
+__pycache__/
+node_modules/
+target/
+dist/
+*.log
+bench/audio/
+bench/results/
+/.data/
+build/
+.svelte-kit/
+
+# Locally built release files (uploaded to GitHub Releases, not committed)
+releases/

@@ -1,0 +1,29 @@
+name: Feature request
+description: Suggest an idea or an improvement.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation you are in, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like Sudo to do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have considered
+      description: Could this be an extension (Settings → Marketplace) instead of a built-in feature?
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to work on this myself.

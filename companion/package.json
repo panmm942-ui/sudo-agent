@@ -1,0 +1,8 @@
+{
+  "name": "sudo-personal-companion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "wrangler dev", "deploy": "wrangler deploy", "check": "tsc --ignoreConfig --noEmit --target ES2022 --module ESNext --moduleResolution bundler --lib ES2022,WebWorker src/worker.ts" },
+  "devDependencies": { "typescript": "~6.0.3", "wrangler": "^4.0.0" }
+}

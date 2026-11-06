@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sudo-personal-companion-panmm942",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-04",
+  "workers_dev": true,
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+  "durable_objects": { "bindings": [{ "name": "COMPANION", "class_name": "CompanionState" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanionState"] }],
+  "observability": { "enabled": false }
+}

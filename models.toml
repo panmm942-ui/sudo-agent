@@ -1,0 +1,69 @@
+# Pinned model/binary sources for sudo. Fetched into models/ (gitignored) by
+#   cd core && uv run python -m sudo_core.models.fetch ../models.toml ../models [--llama-variant cuda-13.4]
+# Every Hugging Face entry is pinned to a commit `revision` (the SHAs the dev box measured with), so the
+# laptop rerun measures the same GGUFs, chat template and weights.
+
+[[model]]
+name = "llm"
+kind = "hf_file"
+repo = "unsloth/Qwen3.5-4B-GGUF"
+files = ["Qwen3.5-4B-Q4_K_M.gguf", "mmproj-F16.gguf"]
+revision = "e87f176479d0855a907a41277aca2f8ee7a09523"
+
+# Draft model for speculative decoding (same Qwen3.5 vocabulary as the 4B).
+[[model]]
+name = "llm-draft"
+kind = "hf_file"
+repo = "unsloth/Qwen3.5-0.8B-GGUF"
+files = ["Qwen3.5-0.8B-Q4_K_M.gguf"]
+revision = "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0"
+
+[[model]]
+name = "decider"
+kind = "hf_repo"
+repo = "fastino/GLiNER2.5-multi-Decide"
+revision = "e173bca1f0c4217d7a55b3b0c705d5ece8a0218d"
+
+# T1 candidates: embedding-similarity intent routers (Task 9 bake-off). Only the files the routers load.
+[[model]]
+name = "embed-e5"
+kind = "hf_file"
+repo = "intfloat/multilingual-e5-small"
+files = [
+    "config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json",
+    "model.safetensors", "onnx/model.onnx", "onnx/model_qint8_avx512_vnni.onnx",
+]
+revision = "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+
+[[model]]
+name = "embed-minilm"
+kind = "hf_file"
+repo = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+files = [
+    "config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json",
+    "model.safetensors", "onnx/model.onnx", "onnx/model_quint8_avx2.onnx",
+]
+revision = "e8f8c211226b894fcb81acc59f3b34ba3efd5f42"
+
+[[model]]
+name = "stt"
+kind = "hf_repo"
+repo = "istupakov/parakeet-tdt-0.6b-v3-onnx"
+revision = "8f23f0c03c8761650bdb5b40aaf3e40d2c15f1ce"
+
+# "{tag}" / "{variant}" in file names are replaced by the pinned release tag and the chosen CUDA build.
+# variant: cuda-12.4 = this dev box (GTX 1660 Super, Turing). cuda-13.4 = RTX 50xx / Blackwell (sm_120),
+# e.g. the RTX 5050 laptop: pass --llama-variant cuda-13.4 or set SUDO_LLAMA_VARIANT=cuda-13.4.
+# CUDA 13.x builds need a newer NVIDIA driver; "580" is UNVERIFIED (to verify on the laptop against NVIDIA's CUDA 13.x
+# release notes). Whether the build runs natively on sm_120 is also unverified (check llama-server offloads). Asset names checked against the GitHub releases API for b11982.
+[[model]]
+name = "llama.cpp"
+kind = "github_release"
+repo = "ggml-org/llama.cpp"
+files = [
+    "llama-{tag}-bin-win-{variant}-x64.zip",
+    "cudart-llama-bin-win-{variant}-x64.zip",
+]
+pin = "b11982"
+variant = "cuda-12.4"
+variants = ["cuda-12.4", "cuda-13.4"]

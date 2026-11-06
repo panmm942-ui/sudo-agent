@@ -1,0 +1,3 @@
+# uv's cache and managed-Python locations come from UV_CACHE_DIR / UV_PYTHON_INSTALL_DIR,
+# which dev.sh / dev.ps1 derive from $SUDO_DATA (no machine-specific paths in tracked config).
+python-preference = "only-managed"

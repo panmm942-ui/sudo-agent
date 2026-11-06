@@ -1,0 +1,87 @@
+name: Bug report
+description: Something in Sudo does not work as described.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please check the
+        [troubleshooting guide](https://github.com/panmm942-ui/sudo-agent/blob/master/docs/TROUBLESHOOTING.md)
+        and [existing issues](https://github.com/panmm942-ui/sudo-agent/issues?q=is%3Aissue) first.
+        **Do not paste tokens, cookies, companion keys or other credentials.**
+  - type: input
+    id: version
+    attributes:
+      label: Sudo version
+      description: Shown under Settings → Island → App & updates.
+      placeholder: "0.2.7"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - Installer (setup.exe)
+        - Portable executable
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: Run `winver`.
+      placeholder: "Windows 11 24H2 (26100)"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Island / glass / animation
+        - Spotify playback controls
+        - Lyrics
+        - Animated artwork / Canvas video
+        - Spotify connector
+        - Vocal mode
+        - Home, reminders, alarms
+        - iPhone Clock / online companion
+        - Extensions / Marketplace
+        - Installer / updates
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Spotify and play …
+        2. Hover the island …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, GPU, monitor setup or logs
+      description: Multi-monitor/scaling details, GPU model (for vocal mode), and any error text shown in the island.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I am on the latest release, or I said which older version I use and why.
+          required: true
+        - label: I removed any credentials or personal data from this report.
+          required: true

@@ -1,0 +1,9 @@
+# Optional Cover card, Canvas and reliable departure
+
+User supplied a large artwork-above-controls reference and a Canvas API repository, and reported unpinned panels staying open. Preserve current centered default and original artwork-left option; add Cover card as a third choice.
+
+- Cover card uses440x420 with278pxfull-widthcover andtracktitle/artist/transport below. Main navigationpositionsremain. Lyrics keep the currentplayerheight. Native transparentwindowgrows480normally; pinnedfullclearance428offsetrequests890heightcappedtomonitor; shrinksafteranimation.
+- Reproduce stickyunpinnedlyrics first: expanded,pinnedfalse,lyricsstilltrueafterleave. Closeunpinnedtemporaryviewsbeforecollapse. Nativehit-test occupancy boolchangeevent arrivesbeforeclick-throughswitch, coverslostDOMleave; frontenddebounces80ms. Protectexplicitpins,Settings,alarms and existingcompactvisibilitypreference.
+- Implement optionalCanvasconnector independently frompublishedroutes/proto, notimportGPLcode. Canvasloopseparatefromfullmusicvideo. UsermanualcredentialinputonlyinSettings, WindowsCredentialManager, nocookie-storeaccess. Cookieexchangebest-effortcurrentTOTPprotocol/publicGitHubchallengedatawithoutcredentialheaders; shortlivedtokenfallback. Spotifyonlycredentialrequests, strictcanvaz.scdn.coMP4 URLallowlist,32trackcache, boundedrequests/cancelgeneration/stalereplyguards.
+- Mountvideoonlywhenenabled+visibleexpandedSpotify; pause/unmountoninactive, color/artworkfallbackmissing/error, noLookupfrompositionticks, noNodebackgroundserver. RemovelegacyPC-video URLsourcefromplayer.
+- Validatebrowserlayout+syntheticdecodedvideo+fallbacks+nativepointerloss+pin/lyrics/search+fullposteredgeclearance+classicrestore. SeparatethisfromunverifiedactualSpotifyauthentication/Canvasfetch. Fullsuites,build,relaunch.

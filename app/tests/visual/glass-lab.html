@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Glass lab</title>
+    <style>
+      @font-face {
+        font-family: "Geist";
+        src: url("../../src/assets/fonts/GeistVF.woff2") format("woff2");
+        font-weight: 100 900;
+      }
+      html,
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+        font-family: "Geist", system-ui, sans-serif;
+        color: oklch(0.98 0 0);
+      }
+      #bg,
+      #gl {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+      }
+      #content {
+        position: fixed;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        box-sizing: border-box;
+        text-shadow: 0 0 1px oklch(0.12 0.01 260 / 0.55), 0 0 10px oklch(0.12 0.01 260 / 0.4);
+      }
+      .dot {
+        flex: none;
+        border-radius: 50%;
+        background: radial-gradient(circle at 40% 35%, oklch(0.95 0.06 70), oklch(0.78 0.12 70) 60%, oklch(0.6 0.12 60));
+      }
+      .col { display: grid; gap: 4px; }
+      .t1 { font-size: 15px; font-weight: 500; }
+      .t2 { font-size: 13px; color: oklch(0.98 0 0 / 0.62); }
+      .big { font-size: 44px; font-weight: 300; letter-spacing: -0.02em; }
+      .btns { display: flex; gap: 8px; margin-top: 8px; }
+      .btn { padding: 7px 16px; border-radius: 999px; font-size: 13px; background: oklch(0.98 0 0 / 0.12); }
+      .btn.primary { background: oklch(0.8 0.11 70); color: oklch(0.2 0.02 70); text-shadow: none; }
+    </style>
+  </head>
+  <body>
+    <img id="bg" alt="" />
+    <canvas id="gl"></canvas>
+    <div id="content"></div>
+    <script type="module">
+      import { GlassRenderer } from "../../src/gl/renderer.ts";
+      import { SIZES, heightFor } from "../../src/island/machine.ts";
+      import wallpaperUrl from "./fixtures/wallpaper.png?url";
+      import { paintBright } from "./fixtures/bright.ts";
+
+      const params = new URLSearchParams(location.search);
+      const state = params.get("state") ?? "listening";
+      const bg = params.get("bg") ?? "dusk";
+
+      const url = bg === "bright" ? paintBright(1280, 560) : wallpaperUrl;
+      const img = document.getElementById("bg");
+      img.src = url;
+      await img.decode();
+      const bitmap = await createImageBitmap(img);
+
+      const canvas = document.getElementById("gl");
+      const renderer = new GlassRenderer(canvas);
+      const size = SIZES[state];
+      const h = heightFor(state);
+      renderer.setShape(size.w, h, size.r);
+      renderer.setBackdrop(bitmap);
+      renderer.render(0);
+
+      const pill = renderer.pillRect();
+      const box = document.getElementById("content");
+      Object.assign(box.style, { left: `${pill.x}px`, top: `${pill.y}px`, width: `${pill.w}px`, height: `${pill.h}px` });
+      const html = {
+        compact: `<div class="dot" style="width:18px;height:18px"></div><div class="t1" style="font-size:13px">Timer 4:59</div>`,
+        listening: `<div class="dot" style="width:44px;height:44px"></div><div class="t1">Remind me to call</div>`,
+        confirm: `<div class="col"><div class="t1">Delete 3 files?</div><div class="t2">This moves them to the Recycle Bin.</div><div class="btns"><div class="btn">Cancel</div><div class="btn primary">Delete</div></div></div>`,
+        alarm: `<div class="col"><div class="t2">Alarm</div><div class="big">7:30</div><div class="t2">Wake up, stand-up at 9</div><div class="btns"><div class="btn">Snooze</div><div class="btn primary">Stop</div></div></div>`,
+      };
+      box.style.padding = state === "listening" || state === "compact" ? "0 22px 0 20px" : "0 32px";
+      box.innerHTML = html[state] ?? "";
+      await document.fonts.ready;
+      window.glassLab = { ready: true };
+    </script>
+  </body>
+</html>

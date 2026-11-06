@@ -1,0 +1,61 @@
+{"text":"take a screenshot","intent":"screenshot"}
+{"text":"can you grab a screenshot of my screen please","intent":"screenshot"}
+{"text":"capture the screen","intent":"screenshot"}
+{"text":"snap my screen real quick","intent":"screenshot"}
+{"text":"πάρε ένα screenshot","intent":"screenshot"}
+{"text":"βγάλε στιγμιότυπο οθόνης","intent":"screenshot"}
+{"text":"τράβα μια φωτογραφία της οθόνης","intent":"screenshot"}
+{"text":"κάνε screenshot","intent":"screenshot"}
+{"text":"open spotify","intent":"open_app","app":"spotify"}
+{"text":"launch discord for me","intent":"open_app","app":"discord"}
+{"text":"start visual studio code","intent":"open_app","app":"visual studio code"}
+{"text":"can you open the calculator","intent":"open_app","app":"calculator"}
+{"text":"fire up chrome","intent":"open_app","app":"chrome"}
+{"text":"άνοιξε το spotify","intent":"open_app","app":"spotify"}
+{"text":"άνοιξε τον υπολογιστή τσέπης","intent":"open_app","app":"υπολογιστή τσέπης"}
+{"text":"ξεκίνα το discord","intent":"open_app","app":"discord"}
+{"text":"άνοιξε το chrome σε παρακαλώ","intent":"open_app","app":"chrome"}
+{"text":"θέλω να ανοίξεις το steam","intent":"open_app","app":"steam"}
+{"text":"type hello world","intent":"type_text","text_arg":"hello world"}
+{"text":"write see you tomorrow at nine","intent":"type_text","text_arg":"see you tomorrow at nine"}
+{"text":"type in thanks for the update","intent":"type_text","text_arg":"thanks for the update"}
+{"text":"γράψε καλημέρα σε όλους","intent":"type_text","text_arg":"καλημέρα σε όλους"}
+{"text":"πληκτρολόγησε θα αργήσω λίγο","intent":"type_text","text_arg":"θα αργήσω λίγο"}
+{"text":"γράψε ευχαριστώ πολύ","intent":"type_text","text_arg":"ευχαριστώ πολύ"}
+{"text":"pause the music","intent":"play_pause"}
+{"text":"resume playback","intent":"play_pause"}
+{"text":"σταμάτα τη μουσική","intent":"play_pause"}
+{"text":"βάλε πάλι τη μουσική","intent":"play_pause"}
+{"text":"next song","intent":"next_track"}
+{"text":"skip this track","intent":"next_track"}
+{"text":"επόμενο τραγούδι","intent":"next_track"}
+{"text":"άλλαξε τραγούδι","intent":"next_track"}
+{"text":"go back to the previous song","intent":"previous_track"}
+{"text":"play the last track again","intent":"previous_track"}
+{"text":"προηγούμενο τραγούδι","intent":"previous_track"}
+{"text":"turn the volume up","intent":"volume_up"}
+{"text":"make it louder","intent":"volume_up"}
+{"text":"δυνάμωσε την ένταση","intent":"volume_up"}
+{"text":"βάλε πιο δυνατά","intent":"volume_up"}
+{"text":"turn it down a bit","intent":"volume_down"}
+{"text":"lower the volume","intent":"volume_down"}
+{"text":"χαμήλωσε τον ήχο","intent":"volume_down"}
+{"text":"mute the sound","intent":"mute"}
+{"text":"κλείσε τον ήχο","intent":"mute"}
+{"text":"what's the capital of australia","intent":"chat"}
+{"text":"tell me a joke","intent":"chat"}
+{"text":"how do I make pancakes","intent":"chat"}
+{"text":"why is the sky blue","intent":"chat"}
+{"text":"what did you think of the movie inception","intent":"chat"}
+{"text":"write me a short poem about the sea","intent":"chat"}
+{"text":"can you explain what a screenshot is","intent":"chat"}
+{"text":"how do I open a jar that's stuck","intent":"chat"}
+{"text":"τι καιρό κάνει συνήθως στην Αθήνα τον Αύγουστο","intent":"chat"}
+{"text":"πες μου ένα ανέκδοτο","intent":"chat"}
+{"text":"πώς φτιάχνω μουσακά","intent":"chat"}
+{"text":"ποια είναι η πρωτεύουσα της Ιταλίας","intent":"chat"}
+{"text":"γράψε μου ένα ποίημα για τη θάλασσα","intent":"chat"}
+{"text":"τι είναι η τεχνητή νοημοσύνη","intent":"chat"}
+{"text":"pare ena screenshot","intent":"screenshot"}
+{"text":"anoikse to spotify","intent":"open_app","app":"spotify"}
+{"text":"epomeno tragoudi","intent":"next_track"}

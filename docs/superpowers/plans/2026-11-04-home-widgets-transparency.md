@@ -1,0 +1,7 @@
+# Home widgets, transparency, navigation and top-edge follow-up
+
+Approved: four Home widgets (clock/date, routine reminders, focus timer, personal note), selectable in Settings. Keep glass and existing navigation arrangement. Add independently persisted surface transparency, leave text readable. Anchor navigation to target geometry instead of spring geometry. Native edge drop always44 logical px; return when pointer reaches lowered shape; rearm only after leaving corridor.
+
+Implementation: validated widget preferences; default clock/reminders preserve old Home. Focus deadline owned by root, persisted, pause/resume/reset, one root tick, completion queued while another alarm is active. Note editable in Settings. Scroll inside fixed Home size when widgets overflow. No Spotify content in new widgets. Manual GitHub release check and optional startup check, bounded timeout and validated stable version/release URL. Repository currently responds404 to latest public release; no signing/public-key infrastructure, so installation remains explicitly unavailable. Do not mislabel ordinary volume as vocal reduction or promise100percent ad blocking; those need independent audio/client integration.
+
+Verification: pure timer/preferences/release tests, native edge state tests, frontend check/full tests/native tests, browser interactions and geometry, build and normal launch. Preserve preexisting dirty tree and no commits/push.

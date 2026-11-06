@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Orb preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: oklch(0.16 0.006 260);
+        --glass: oklch(0.18 0.01 260 / 0.55);
+        --text: oklch(0.98 0 0);
+        --text-2: oklch(0.98 0 0 / 0.62);
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        font-family: "Geist", system-ui, sans-serif;
+      }
+      #stage {
+        position: relative;
+        width: 560px;
+        height: 400px;
+        display: grid;
+        justify-items: center;
+        align-content: center;
+        gap: 18px;
+        background:
+          radial-gradient(120% 80% at 50% 0%, oklch(0.27 0.012 250) 0%, transparent 70%),
+          radial-gradient(60% 50% at 85% 100%, oklch(0.24 0.02 60 / 0.6) 0%, transparent 70%),
+          var(--bg);
+      }
+      #hero {
+        width: 240px;
+        height: 240px;
+      }
+      .pill {
+        width: 360px;
+        height: 84px;
+        border-radius: 42px;
+        background: var(--glass);
+        box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.07);
+        backdrop-filter: blur(18px);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 22px 0 8px;
+        box-sizing: border-box;
+      }
+      #mini {
+        width: 72px;
+        height: 72px;
+        flex: none;
+      }
+      .label {
+        display: grid;
+        gap: 2px;
+      }
+      #title {
+        color: var(--text);
+        font-size: 15px;
+        letter-spacing: -0.01em;
+        font-weight: 500;
+      }
+      .hint {
+        color: var(--text-2);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="hero"></canvas>
+      <div class="pill">
+        <canvas id="mini"></canvas>
+        <div class="label">
+          <span id="title">Listening</span>
+          <span class="hint">mock voice</span>
+        </div>
+      </div>
+    </div>
+    <script type="module">
+      import { OrbCanvas } from "../../src/orb/OrbCanvas.ts";
+      import { OrbSmoother } from "../../src/orb/features.ts";
+      import { MockVoice } from "../../src/orb/mock.ts";
+
+      const params = new URLSearchParams(location.search);
+      const fixedMode = params.get("mode");
+      /** Default timeline: listen, think, listen again. */
+      const modeAt = (t) => fixedMode ?? (t < 5.5 ? "listening" : t < 8 ? "thinking" : "listening");
+      const titles = { listening: "Listening", thinking: "Thinking", speaking: "Speaking" };
+
+      const hero = new OrbCanvas(document.getElementById("hero"), { preserveDrawingBuffer: true });
+      const mini = new OrbCanvas(document.getElementById("mini"), { preserveDrawingBuffer: true });
+      const title = document.getElementById("title");
+      const smoother = new OrbSmoother();
+      const voice = new MockVoice(Number(params.get("seed") ?? 7));
+      const source = fixedMode === "speaking" ? "tts" : "mic";
+
+      let simT = 0;
+      let uniforms = smoother.push(voice.next(0), 0);
+
+      /** Advances the mock + smoother to `t` in 120 Hz steps, then draws both orbs. */
+      function renderAt(t) {
+        while (simT < t - 1e-9) {
+          const dt = Math.min(1 / 120, t - simT);
+          simT += dt;
+          smoother.mode = modeAt(simT);
+          uniforms = smoother.push({ ...voice.next(dt), source }, dt);
+        }
+        const mode = modeAt(t);
+        hero.draw(uniforms, mode, t);
+        mini.draw(uniforms, mode, t);
+        title.textContent = titles[mode];
+        return uniforms;
+      }
+
+      window.orbPreview = { renderAt, ready: true };
+
+      if (params.get("frozen") !== "1") {
+        const t0 = performance.now();
+        const loop = (now) => {
+          renderAt((now - t0) / 1000);
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      } else {
+        renderAt(Number(params.get("t") ?? 0));
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,151 @@
+/* sudo island design tokens. Values come from the Phase 1 plan's Global Constraints. */
+
+@font-face {
+  font-family: "Geist";
+  src: url("../assets/fonts/GeistVF.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  /* Color: primitives */
+  --glass-tint: oklch(0.18 0.01 260 / 0.55);
+  --text-primary: oklch(0.98 0 0);
+  --text-secondary: oklch(0.98 0 0 / 0.62);
+  --accent: oklch(0.80 0.11 70);
+  /* Ink on accent fills (9.5:1 against --accent). */
+  --on-accent: oklch(0.20 0.02 70);
+
+  /* Color: semantic. Accent is a fill, never a text color: on light wallpapers it drops to ~2.2:1. */
+  --surface-control: oklch(0.98 0 0 / 0.12);
+  --surface-control-hover: oklch(0.98 0 0 / 0.18);
+  --surface-control-active: oklch(0.98 0 0 / 0.08);
+  --accent-hover: oklch(0.84 0.11 70);
+  --accent-active: oklch(0.76 0.11 70);
+  --indicator-idle: oklch(0.98 0 0 / 0.24);
+  --focus-ring: var(--text-primary);
+  /* Glyph halo: keeps text legible where the tinted glass sits over a bright wallpaper. */
+  --text-halo: 0 0 1px oklch(0.12 0.01 260 / 0.55), 0 0 10px oklch(0.12 0.01 260 / 0.4);
+
+  /* Type */
+  --font-sans: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --tracking-tight: -0.01em; /* every size >= 15 px */
+  --type-caption: 500 12px/16px var(--font-sans);
+  --type-body: 400 13px/18px var(--font-sans);
+  --type-label: 500 13px/16px var(--font-sans);
+  --type-text: 450 15px/22px var(--font-sans);
+  --type-title: 600 15px/20px var(--font-sans);
+  --type-time: 500 44px/44px var(--font-sans);
+
+  /* Space */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  /* The glass bezel is 14 px wide; content stays inside it. */
+  --bezel: 14px;
+
+  /* Controls */
+  --control-h: 32px;
+  --control-h-lg: 36px;
+  --radius-pill: 999px;
+
+  /* Motion: content crossfade */
+  --fade-out-ms: 140ms;
+  --fade-in-ms: 220ms;
+  --fade-in-delay-ms: 60ms;
+  --fade-blur: 8px;
+  --fade-scale: 0.96;
+  --reduced-ms: 120ms;
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  /* Word-by-word reply reveal */
+  --reveal-word-ms: 28ms;
+  --word-fade-ms: 180ms;
+}
+
+/* Base for every island content layer. */
+.island-content {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  text-shadow: var(--text-halo);
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  cursor: default;
+}
+
+.island-content,
+.island-content *,
+.island-content *::before,
+.island-content *::after {
+  box-sizing: border-box;
+}
+
+.island-content :focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Pill button: 32 px tall (>= 24 px target), full-round, no shadow. */
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-h);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-control);
+  color: var(--text-primary);
+  font: var(--type-label);
+  text-shadow: none;
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.pill-btn:hover {
+  background: var(--surface-control-hover);
+}
+.pill-btn:active {
+  background: var(--surface-control-active);
+  transform: scale(0.97);
+}
+.pill-btn.accent {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.pill-btn.accent:hover {
+  background: var(--accent-hover);
+}
+.pill-btn.accent:active {
+  background: var(--accent-active);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pill-btn,
+  .pill-btn:active {
+    transition: background-color 120ms ease-out;
+    transform: none;
+  }
+}

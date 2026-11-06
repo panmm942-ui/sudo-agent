@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/panmm942-ui/sudo-agent/security/advisories/new
+    about: Please report security problems privately, not as a public issue.
+  - name: Read the troubleshooting guide first
+    url: https://github.com/panmm942-ui/sudo-agent/blob/master/docs/TROUBLESHOOTING.md
+    about: Fixes for the most common Spotify, lyrics, video and vocal-mode problems.

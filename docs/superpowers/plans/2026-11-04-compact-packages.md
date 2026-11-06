@@ -1,0 +1,5 @@
+# Compact customization and local tab packages
+
+Implement user-requested refinements in current approved glass direction. Smooth scalar loudness using attack/release envelopes with symmetric bars, no fake frequency bands. Focus duration1–180min, compact widget selection and fixed compact tab override independent of expanded tab. Remove duplicated lyric mode switches from Settings; original lyric text remains fallback. Search inline field anchored at existing icon, outside click closes. Home pin becomes short subtle accent rather than rectangle around widgets.
+
+Local Marketplace supports strictly validated declarative JSONv1 packages with text/clock/focus blocks, compact label, import/install/remove/export and embedded AI authoring prompt. No arbitrary JS/HTML/network or native commands in packages. Custom expanded tabs selectable on right; optional compact package display. Public upload/discovery requires backend and remains explicitly unavailable. Do not promise100percent compatibility with arbitraryAIcode. Spotify video research found SpicetifyCanvas internalprotocol path; full musicvideo remains separate and unverified. Preserve earlier working tree.

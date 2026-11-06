@@ -1,0 +1,13 @@
+# Video warm resume and decoder continuity
+
+The current-song video was found successfully, but leaving and reopening the island showed the cover and searched again. Startup and fullscreen playback could also feel uneven. This fix preserves the appearance, animations, source quality and song-clock synchronization.
+
+Closing the island previously supplied null metadata to the video lookup and unmounted TrackVideo. A ready current-song result and its decoder are now retained while inactive. Unfinished lookups are cancelled; changing the song or source settings still invalidates old media. New songs do not start provider requests while inactive. Only the current decoder is retained, paused with the existing bounded HLS buffer, and its 100 ms clock timer stops while hidden. Reopening resumes on the song clock. The background remains invisible outside expanded Spotify, and the loaded flag is retained to prevent a cover flash.
+
+A regression test confirmed that an ordinary 200 ms timing difference previously caused a hard seek. Small differences now use bounded playback-rate correction from 0.95 to 1.05. Ordinary drift over 750 ms permits a hard correction at most once a second; explicit song seeks, song changes and pause/resume still align immediately. Loop boundaries use circular distance. The independent running anchor is preserved across hiding when pause-with-song is disabled. Initial frames are shown after the initial alignment seek settles. HLS demuxing runs in a worker to reduce UI-thread work.
+
+Regression tests cover retained lookup identity, cancellation of unfinished inactive lookups, gentle drift correction, suspended timers and the free-running paused-song anchor. The final frontend suite passes 391 tests across 49 files; Svelte check has zero errors and warnings. Native tests pass 158 with 10 opt-in tests ignored.
+
+Native Windows checks retained the same ready video element across three close/reopen cycles, paused it while hidden, resumed it on return, and observed zero additional loadstart events. A four-second fullscreen 720 x 1280 clip sample delivered 95 frames with zero decoder-reported dropped frames, buffering events or corrective seeks. The inline sample delivered 96 frames with no dropped frames and one buffering event. These are bounded live samples rather than a guarantee of every source frame rate or GPU condition. Evidence is in the workspace outputs/video-warm-resume-native.json.
+
+The user paired a real iPhone during this work. Preserve that pairing and all companion data; do not revoke it or substitute test state. No companion code or configuration changes are part of this fix.

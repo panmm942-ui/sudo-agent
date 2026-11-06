@@ -1,0 +1,89 @@
+name: Release
+
+# Push a tag like v0.2.8 (after bumping the version in the three files below and adding a
+# CHANGELOG.md section). This builds the Windows files on a clean runner and creates a DRAFT
+# GitHub Release. Nothing is public until a maintainer reviews the draft and presses Publish.
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build, e.g. v0.2.8
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Check that the tag matches every version field
+        shell: pwsh
+        run: |
+          $v = $env:TAG.TrimStart('v')
+          $pkg = (Get-Content app/package.json -Raw | ConvertFrom-Json).version
+          $conf = (Get-Content app/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $cargo = (Select-String -Path app/src-tauri/Cargo.toml -Pattern '^version\s*=\s*"([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          "tag=$v package.json=$pkg tauri.conf.json=$conf Cargo.toml=$cargo"
+          if ($pkg -ne $v -or $conf -ne $v -or $cargo -ne $v) { throw "Version mismatch: bump all three files to $v before tagging." }
+          if (-not (Select-String -Path CHANGELOG.md -Pattern "^## \[$([regex]::Escape($v))\]" -Quiet)) { throw "CHANGELOG.md has no '## [$v]' section." }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri
+
+      - name: Install, check and test
+        working-directory: app
+        run: |
+          npm ci
+          npm run check
+          npx vitest run
+          npm run build
+          cargo test --manifest-path src-tauri/Cargo.toml --locked --features tauri/custom-protocol --lib
+
+      - name: Build installer and portable executable
+        working-directory: app
+        run: npx tauri build --bundles nsis
+
+      - name: Collect files and checksums
+        shell: pwsh
+        run: |
+          $v = $env:TAG.TrimStart('v')
+          $out = New-Item -ItemType Directory -Force dist-release
+          Copy-Item "app/src-tauri/target/release/bundle/nsis/sudo-island_${v}_x64-setup.exe" $out
+          Copy-Item app/src-tauri/target/release/sudo-island.exe (Join-Path $out "sudo-island_${v}_x64-portable.exe")
+          $lines = Get-ChildItem $out -Filter *.exe | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name }
+          [IO.File]::WriteAllText((Join-Path $out 'SHA256SUMS.txt'), ($lines -join "`n") + "`n")
+          Get-Content (Join-Path $out 'SHA256SUMS.txt')
+
+          # Release notes = this version's CHANGELOG.md section.
+          $text = Get-Content CHANGELOG.md -Raw
+          $m = [regex]::Match($text, "(?ms)^## \[$([regex]::Escape($v))\][^\n]*\n(.*?)(?=^## \[|\z)")
+          [IO.File]::WriteAllText('release-notes.md', $m.Groups[1].Value.Trim() + "`n`nVerify downloads with ``SHA256SUMS.txt``. The executables are not code-signed, so Windows SmartScreen may ask for confirmation.`n")
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sudo-${{ env.TAG }}-windows-x64
+          path: dist-release/*
+          if-no-files-found: error
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release create $env:TAG dist-release/* --draft --verify-tag --title "Sudo $env:TAG" --notes-file release-notes.md

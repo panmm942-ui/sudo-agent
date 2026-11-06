@@ -1,0 +1,142 @@
+{
+  "media.play_pause": {
+    "en": "Pause or resume the currently playing media (music or video)",
+    "el": "Παύση ή συνέχιση της μουσικής ή του βίντεο που παίζει αυτή τη στιγμή",
+    "params": {}
+  },
+  "media.next": {
+    "en": "Skip to the next track",
+    "el": "Μετάβαση στο επόμενο κομμάτι",
+    "params": {}
+  },
+  "media.previous": {
+    "en": "Go back to the previous track",
+    "el": "Επιστροφή στο προηγούμενο κομμάτι",
+    "params": {}
+  },
+  "volume.set": {
+    "en": "Set the system volume to an absolute level, or change it relative to the current level",
+    "el": "Ρύθμιση της έντασης του ήχου σε συγκεκριμένο επίπεδο ή σχετική αλλαγή από το τρέχον επίπεδο",
+    "params": {
+      "level": {"type": "integer", "minimum": 0, "maximum": 100, "description": "Absolute volume percentage"},
+      "delta": {"type": "integer", "minimum": -100, "maximum": 100, "description": "Relative change in percentage points (negative = quieter). A vague 'a bit' means 10"}
+    }
+  },
+  "volume.mute": {
+    "en": "Mute or unmute the system sound",
+    "el": "Σίγαση ή επαναφορά του ήχου του συστήματος",
+    "params": {
+      "mute": {"type": "boolean", "description": "true to mute, false to unmute"}
+    }
+  },
+  "app.open": {
+    "en": "Open or launch an application",
+    "el": "Άνοιγμα ή εκκίνηση μιας εφαρμογής",
+    "params": {
+      "app": {"type": "string", "description": "Canonical English application name, e.g. 'Spotify', 'Visual Studio Code', 'Notepad'"}
+    }
+  },
+  "app.close": {
+    "en": "Close or quit a running application",
+    "el": "Κλείσιμο ή τερματισμός μιας εφαρμογής που τρέχει",
+    "params": {
+      "app": {"type": "string", "description": "Canonical English application name"}
+    }
+  },
+  "window.snap": {
+    "en": "Snap, maximize or minimize the active window",
+    "el": "Τοποθέτηση, μεγιστοποίηση ή ελαχιστοποίηση του ενεργού παραθύρου",
+    "params": {
+      "position": {"type": "string", "enum": ["left", "right", "top", "bottom", "maximize", "minimize"], "description": "Where to place the active window"}
+    }
+  },
+  "web.search": {
+    "en": "Search the web for a query",
+    "el": "Αναζήτηση στο διαδίκτυο για ένα ερώτημα",
+    "params": {
+      "query": {"type": "string", "description": "The search terms, in the language they were spoken"},
+      "engine": {"type": "string", "description": "Optional specific site to search on, e.g. 'YouTube', 'Google'"}
+    }
+  },
+  "web.open": {
+    "en": "Open a website in the browser",
+    "el": "Άνοιγμα ιστοσελίδας στον περιηγητή",
+    "params": {
+      "site": {"type": "string", "description": "Domain as spoken or written, e.g. 'github.com'; a bare well-known brand name maps to its main .com/.org domain ('Reddit' -> 'reddit.com')"}
+    }
+  },
+  "alarm.set": {
+    "en": "Set a wake-up or time-of-day alarm",
+    "el": "Ρύθμιση ξυπνητηριού ή συναγερμού για συγκεκριμένη ώρα",
+    "params": {
+      "time": {"type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$", "description": "24h HH:MM"},
+      "label": {"type": "string", "description": "Optional alarm label"}
+    }
+  },
+  "timer.set": {
+    "en": "Start a countdown timer for a duration",
+    "el": "Εκκίνηση αντίστροφης μέτρησης για συγκεκριμένη διάρκεια",
+    "params": {
+      "seconds": {"type": "integer", "minimum": 1, "description": "Total duration in seconds"},
+      "label": {"type": "string", "description": "Optional timer label"}
+    }
+  },
+  "reminder.create": {
+    "en": "Create a reminder, optionally at a given date and time",
+    "el": "Δημιουργία υπενθύμισης, προαιρετικά για συγκεκριμένη ημερομηνία και ώρα",
+    "params": {
+      "text": {"type": "string", "description": "What to be reminded about"},
+      "date": {"type": "string", "description": "'today', 'tomorrow', a lowercase English weekday name, or YYYY-MM-DD"},
+      "time": {"type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$", "description": "24h HH:MM"}
+    }
+  },
+  "schedule.query": {
+    "en": "Ask what is on the calendar or schedule for a day",
+    "el": "Ερώτηση για το τι υπάρχει στο ημερολόγιο ή το πρόγραμμα μιας ημέρας",
+    "params": {
+      "date": {"type": "string", "description": "'today', 'tomorrow', a lowercase English weekday name, or YYYY-MM-DD"}
+    }
+  },
+  "calendar.create": {
+    "en": "Create a calendar event or appointment",
+    "el": "Δημιουργία εκδήλωσης ή ραντεβού στο ημερολόγιο",
+    "params": {
+      "title": {"type": "string", "description": "Event title"},
+      "date": {"type": "string", "description": "'today', 'tomorrow', a lowercase English weekday name, or YYYY-MM-DD"},
+      "time": {"type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$", "description": "24h HH:MM start time"},
+      "duration_minutes": {"type": "integer", "minimum": 1, "description": "Event length in minutes"}
+    }
+  },
+  "email.summary": {
+    "en": "Summarize emails from the inbox",
+    "el": "Σύνοψη των email του εισερχομένων",
+    "params": {
+      "scope": {"type": "string", "enum": ["unread", "today", "important"], "description": "Which emails to summarize"},
+      "sender": {"type": "string", "description": "Only emails from this person"}
+    }
+  },
+  "system.lock": {
+    "en": "Lock the computer",
+    "el": "Κλείδωμα του υπολογιστή",
+    "params": {}
+  },
+  "system.screenshot": {
+    "en": "Take a screenshot",
+    "el": "Λήψη στιγμιότυπου οθόνης",
+    "params": {
+      "region": {"type": "string", "enum": ["full", "window", "selection"], "description": "What to capture; omit when unspecified (default: full screen)"}
+    }
+  },
+  "settings.open": {
+    "en": "Open a page of the system settings",
+    "el": "Άνοιγμα σελίδας των ρυθμίσεων του συστήματος",
+    "params": {
+      "page": {"type": "string", "enum": ["bluetooth", "wifi", "display", "sound", "battery", "update", "privacy", "apps"], "description": "Settings page; omit to open the main settings"}
+    }
+  },
+  "chat": {
+    "en": "Open-ended question, small talk or conversation with no device action",
+    "el": "Ανοιχτή ερώτηση, ψιλοκουβέντα ή συζήτηση χωρίς ενέργεια στη συσκευή",
+    "params": {}
+  }
+}

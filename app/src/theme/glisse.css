@@ -1,0 +1,273 @@
+/*
+ * Glisse design for Sudo.
+ * The look follows Glisse, Apple's Liquid Glass for the web, by Kelvin Zhang
+ * (https://github.com/0kzh/glisse, MIT License, Copyright (c) 2026 Kelvin Zhang).
+ * Values (dark theme colours, switch/slider/knob geometry and shadows, press
+ * behaviour) are taken from Glisse 0.5.0's styles.css and adapted to Sudo's own
+ * controls, which are Svelte rather than Glisse's React components.
+ *
+ * Active only when <html data-design="glisse">. Selectors repeat an attribute so
+ * they outrank Svelte's per-component styles without !important.
+ */
+:root[data-design="glisse"] {
+  --lg-foreground: rgb(255 255 255);
+  --lg-muted: rgb(235 235 245 / 0.6);
+  --lg-glass: rgb(40 40 40 / 0.62);
+  --lg-glass-active: rgb(70 70 70 / 0.62);
+  --lg-edge: rgb(255 255 255 / 0.08);
+  --lg-selection: rgb(255 255 255 / 0.145);
+  --lg-track: rgb(235 235 245 / 0.3);
+  --lg-rail: rgb(255 255 255 / 0.1);
+  --lg-on: #30d158;
+  --lg-fill: #0091ff;
+  --lg-ring: rgb(255 255 255 / 0.5);
+  --lg-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --lg-knob-shadow:
+    0 6px 24px rgb(0 0 0 / 0.2),
+    inset 0 0 0 1.5px rgb(255 255 255 / 0.5),
+    inset 0 2px 1px rgb(255 255 255 / 0.45),
+    inset 2px 7px 24px rgb(0 0 0 / 0.09),
+    inset -2px -7px 24px rgb(255 255 255 / 0.16);
+  /* Sudo tokens mapped onto Glisse's palette. */
+  --accent: var(--lg-fill);
+  --on-accent: #fff;
+  --surface-control: var(--lg-glass);
+  --surface-control-hover: var(--lg-glass-active);
+  --indicator-idle: var(--lg-track);
+}
+
+/* Buttons: glass that lights up at once when pressed and fades on release. */
+:root[data-design="glisse"] :is(.pill-btn, .options button, .sync button)[class] {
+  border-radius: 999px;
+  background-color: var(--lg-glass);
+  box-shadow: inset 0 0 0 0.5px var(--lg-edge);
+  -webkit-backdrop-filter: blur(3px) saturate(1.5);
+  backdrop-filter: blur(3px) saturate(1.5);
+  color: var(--lg-foreground);
+  transition: background-color 200ms ease;
+}
+:root[data-design="glisse"] :is(.pill-btn, .options button, .sync button)[class]:hover,
+:root[data-design="glisse"] :is(.options button)[class][aria-pressed="true"] {
+  background-color: var(--lg-glass-active);
+}
+:root[data-design="glisse"] :is(.pill-btn, .options button, .sync button)[class]:active {
+  background-color: var(--lg-glass-active);
+  transition-duration: 0s;
+}
+/* Selected choice: Glisse's segmented-control thumb (dark theme). */
+:root[data-design="glisse"] :is(.pill-btn, .options button)[class][aria-pressed="true"] {
+  background-color: rgb(235 235 245 / 0.3);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.22), 0 2px 10px rgb(0 0 0 / 0.18);
+  font-weight: 600;
+}
+:root[data-design="glisse"] .pill-btn.accent[class] {
+  background-color: var(--lg-fill);
+  color: #fff;
+}
+:root[data-design="glisse"] .pill-btn.accent[class]:active {
+  background-color: color-mix(in srgb, var(--lg-fill) 85%, #000);
+}
+
+/* Switch: Glisse geometry (160x67 at 0.375 = 60x25), green when on, white knob
+   that lifts into glass while held. */
+:root[data-design="glisse"] input[type="checkbox"][role="switch"][role] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: none;
+  width: 60px;
+  height: 25px;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--lg-track);
+  cursor: pointer;
+  transition: background-color 250ms var(--lg-ease);
+}
+:root[data-design="glisse"] input[type="checkbox"][role="switch"][role]::before {
+  content: "";
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  width: 36px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--lg-knob-shadow);
+  transform: translateX(0) scale(1);
+  transition: transform 320ms cubic-bezier(0.34, 1.4, 0.64, 1), background-color 200ms ease;
+}
+:root[data-design="glisse"] input[type="checkbox"][role="switch"][role]:checked {
+  background: var(--lg-on);
+}
+:root[data-design="glisse"] input[type="checkbox"][role="switch"][role]:checked::before {
+  transform: translateX(21px) scale(1);
+  background: #fff;
+}
+:root[data-design="glisse"] input[type="checkbox"][role="switch"][role]:active::before {
+  transform: translateX(0) scale(1.18, 1.3);
+  background: rgb(255 255 255 / 0.55);
+}
+:root[data-design="glisse"] input[type="checkbox"][role="switch"][role]:checked:active::before {
+  transform: translateX(21px) scale(1.18, 1.3);
+}
+:root[data-design="glisse"] input[type="checkbox"][role="switch"][role]:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+:root[data-design="glisse"] input[type="checkbox"][role="switch"][role]:focus-visible {
+  outline: 2px solid var(--lg-ring);
+  outline-offset: 3px;
+}
+
+/* Slider: 6px rail, blue fill up to the value (--lg-progress, set by glisse.ts),
+   white glass knob (60x40 at 0.6) that lifts while held. */
+:root[data-design="glisse"] input[type="range"][type]:not(.seek) {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  accent-color: var(--lg-fill);
+}
+:root[data-design="glisse"] input[type="range"][type]:not(.seek)::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--lg-fill) 0 calc(var(--lg-progress, 0) * 100%), var(--lg-rail) calc(var(--lg-progress, 0) * 100%) 100%);
+}
+:root[data-design="glisse"] input[type="range"][type]:not(.seek)::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 36px;
+  height: 24px;
+  margin-top: -9px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--lg-knob-shadow);
+  transition: transform 260ms cubic-bezier(0.34, 1.4, 0.64, 1), background-color 200ms ease;
+}
+:root[data-design="glisse"] input[type="range"][type]:not(.seek):active::-webkit-slider-thumb {
+  transform: scale(1.25);
+  background: rgb(255 255 255 / 0.55);
+}
+:root[data-design="glisse"] input[type="range"][type]:not(.seek):disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+:root[data-design="glisse"] input[type="range"][type]:not(.seek):focus-visible {
+  outline: none;
+}
+:root[data-design="glisse"] input[type="range"][type]:not(.seek):focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--lg-ring);
+  outline-offset: 3px;
+}
+
+/* Song position bar: Glisse's rail and knob, with a white fill. */
+:root[data-design="glisse"] .seek[type]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  /* The song bar is white (not Glisse's blue fill), like the rest of the player. */
+  background: linear-gradient(90deg, #fff 0 var(--fill, 0%), var(--lg-rail) var(--fill, 0%) 100%);
+}
+:root[data-design="glisse"] .seek[type]::-webkit-slider-thumb {
+  /* Spotify's small round knob, not Glisse's wide capsule. */
+  width: 12px;
+  height: 12px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--lg-knob-shadow);
+}
+
+/* Selects and text fields: glass capsules. */
+:root[data-design="glisse"] :is(select, input[type="text"], input[type="number"], input[type="search"], textarea)[class] {
+  border: 0;
+  border-radius: 12px;
+  background-color: var(--lg-glass);
+  box-shadow: inset 0 0 0 0.5px var(--lg-edge);
+  color: var(--lg-foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-design="glisse"] input[type="checkbox"][role="switch"][role]::before,
+  :root[data-design="glisse"] input[type="range"][type]::-webkit-slider-thumb {
+    transition: none;
+  }
+}
+
+/* Tab bar (Settings sections): a glass capsule; the selected tab is Glisse's
+   selection thumb, which glides between tabs. */
+:root[data-design="glisse"] nav[aria-label="Settings sections"][aria-label] {
+  gap: 0;
+  padding: 4px;
+  margin-bottom: 8px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--lg-glass);
+  box-shadow: inset 0 0 0 0.5px var(--lg-edge);
+  -webkit-backdrop-filter: blur(3px) saturate(1.5);
+  backdrop-filter: blur(3px) saturate(1.5);
+}
+:root[data-design="glisse"] nav[aria-label="Settings sections"] .tab[class] {
+  height: 32px;
+  min-height: 32px;
+  border-radius: 16px;
+  font: 500 12px/16px var(--font-sans);
+  color: var(--lg-muted);
+  transition: background-color 220ms var(--lg-ease), color 220ms var(--lg-ease), transform 220ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+:root[data-design="glisse"] nav[aria-label="Settings sections"] .tab[class]:hover {
+  background: transparent;
+  color: var(--lg-foreground);
+}
+:root[data-design="glisse"] nav[aria-label="Settings sections"] .tab[class][aria-pressed="true"] {
+  background: var(--lg-selection);
+  color: var(--lg-foreground);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.12);
+}
+:root[data-design="glisse"] nav[aria-label="Settings sections"] .tab[class]:active {
+  transform: scale(1.06);
+}
+
+/* Menus and popover panels: Glisse's menu card. */
+:root[data-design="glisse"] :is(.video-menu, .vocal-control .panel)[class] {
+  border: 0;
+  border-radius: 20px;
+  background: rgb(28 28 31 / 0.86);
+  -webkit-backdrop-filter: blur(22px) saturate(1.9);
+  backdrop-filter: blur(22px) saturate(1.9);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.13), 0 12px 40px rgb(0 0 0 / 0.38);
+  animation: lg-menu-in 260ms cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+:root[data-design="glisse"] .video-menu button[class] {
+  border-radius: 14px;
+  font-size: 14px;
+}
+:root[data-design="glisse"] .video-menu button[class]:hover {
+  background: rgb(235 235 245 / 0.13);
+}
+@keyframes lg-menu-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Song search field: Glisse's search input. */
+:root[data-design="glisse"] .search-form input[class] {
+  height: 36px;
+  border: 0;
+  border-radius: 18px;
+  padding: 0 14px;
+  background: var(--lg-glass);
+  box-shadow: inset 0 0 0 0.5px var(--lg-edge);
+}
+:root[data-design="glisse"] .search-form input[class]:focus-visible {
+  outline: 2px solid var(--lg-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-design="glisse"] :is(.video-menu, .vocal-control .panel)[class] { animation: none; }
+  :root[data-design="glisse"] nav[aria-label="Settings sections"] .tab[class] { transition: none; }
+}

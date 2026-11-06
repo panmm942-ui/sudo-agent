@@ -1,0 +1,7 @@
+# Capture timing and lyric fitting
+
+Screenshot root causes: affinity removal waited for asynchronous capture shutdown/main-thread dispatch, allowing the OS screenshot first; injected screenshot shortcuts from utilities were ignored. Fix by immediately pausing incoming own-capture frames using atomic gate, applying WDA_NONE synchronously in the owning process, and accepting screenshot shortcuts regardless of injection flag. Supervisor still stops WGC, freezes last backdrop and restores live refraction/exclusion after temporary20secondwindow. Manual screenshot switch also applies immediately. Preserve normal glass and motion.
+
+Lyrics: eliminate scrollbars and timed scroll containers. Measure final three rows in a temporary invisible layout, fit8–42px with current line larger and neighboring lines82percent; remeasure only on lyric/language/translation or container changes. Preserve fixed440x210 island and row transitions. Plain lyrics use three logical lines per page and Previous/Next buttons, same fitting, no scrollbars.
+
+Verification:208frontendtests,64Rustpass/2ignored,check0errors/0warnings,successfuldebugbuild/relaunch. Browser width/height checks short38.4px,long19.2px,plainpagination,nohorizontal/verticaloverflowwithinroundingtolerance. Actual Windows CUA Print shortcut followed by app screenshot visibly captured native compact island/art/title/waveform. No actual Spotify lyrics copied into mock screenshots.

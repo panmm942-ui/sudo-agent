@@ -1,0 +1,236 @@
+{"id": "en-001", "text": "pause the music", "lang": "en", "intent": "media.play_pause", "slots": {}}
+{"id": "en-002", "text": "sudo, um, play the music", "lang": "en", "intent": "media.play_pause", "slots": {}}
+{"id": "en-003", "text": "can you resume playback please", "lang": "en", "intent": "media.play_pause", "slots": {}}
+{"id": "en-004", "text": "hit play", "lang": "en", "intent": "media.play_pause", "slots": {}}
+{"id": "en-005", "text": "stop the video for a sec", "lang": "en", "intent": "media.play_pause", "slots": {}}
+{"id": "el-001", "text": "βάλε παύση στη μουσική", "lang": "el", "intent": "media.play_pause", "slots": {}}
+{"id": "el-002", "text": "συνέχισε το τραγούδι", "lang": "el", "intent": "media.play_pause", "slots": {}}
+{"id": "el-003", "text": "σταμάτα λίγο τη μουσική", "lang": "el", "intent": "media.play_pause", "slots": {}}
+{"id": "el-004", "text": "παίξε πάλι τη μουσική", "lang": "el", "intent": "media.play_pause", "slots": {}}
+{"id": "mixed-001", "text": "κάνε pause το βίντεο", "lang": "mixed", "intent": "media.play_pause", "slots": {}}
+{"id": "mixed-002", "text": "sudo, βάλε play τη μουσική", "lang": "mixed", "intent": "media.play_pause", "slots": {}}
+{"id": "mixed-003", "text": "κάνε resume το τραγούδι", "lang": "mixed", "intent": "media.play_pause", "slots": {}}
+{"id": "en-006", "text": "skip this song", "lang": "en", "intent": "media.next", "slots": {}}
+{"id": "en-007", "text": "next track please", "lang": "en", "intent": "media.next", "slots": {}}
+{"id": "en-008", "text": "sudo, uh, play the next one", "lang": "en", "intent": "media.next", "slots": {}}
+{"id": "en-009", "text": "I don't like this one, skip it", "lang": "en", "intent": "media.next", "slots": {}}
+{"id": "el-005", "text": "άλλαξε τραγούδι", "lang": "el", "intent": "media.next", "slots": {}}
+{"id": "el-006", "text": "πήγαινε στο επόμενο", "lang": "el", "intent": "media.next", "slots": {}}
+{"id": "el-007", "text": "πέρνα στο επόμενο κομμάτι, σε παρακαλώ", "lang": "el", "intent": "media.next", "slots": {}}
+{"id": "el-008", "text": "το βαρέθηκα αυτό, βάλε το επόμενο", "lang": "el", "intent": "media.next", "slots": {}}
+{"id": "mixed-004", "text": "κάνε skip αυτό το τραγούδι", "lang": "mixed", "intent": "media.next", "slots": {}}
+{"id": "mixed-005", "text": "πάμε next", "lang": "mixed", "intent": "media.next", "slots": {}}
+{"id": "mixed-006", "text": "sudo, next το κομμάτι", "lang": "mixed", "intent": "media.next", "slots": {}}
+{"id": "en-010", "text": "go back to the previous song", "lang": "en", "intent": "media.previous", "slots": {}}
+{"id": "en-011", "text": "play the last track again", "lang": "en", "intent": "media.previous", "slots": {}}
+{"id": "en-012", "text": "previous track", "lang": "en", "intent": "media.previous", "slots": {}}
+{"id": "en-013", "text": "sudo, um, go back to the song before this one", "lang": "en", "intent": "media.previous", "slots": {}}
+{"id": "el-009", "text": "γύρνα στο προηγούμενο τραγούδι", "lang": "el", "intent": "media.previous", "slots": {}}
+{"id": "el-010", "text": "βάλε πάλι το προηγούμενο", "lang": "el", "intent": "media.previous", "slots": {}}
+{"id": "el-011", "text": "πίσω στο προηγούμενο κομμάτι, παρακαλώ", "lang": "el", "intent": "media.previous", "slots": {}}
+{"id": "mixed-007", "text": "κάνε previous", "lang": "mixed", "intent": "media.previous", "slots": {}}
+{"id": "mixed-008", "text": "πήγαινε πίσω στο previous track", "lang": "mixed", "intent": "media.previous", "slots": {}}
+{"id": "mixed-009", "text": "sudo, γύρνα στο προηγούμενο track", "lang": "mixed", "intent": "media.previous", "slots": {}}
+{"id": "en-014", "text": "set the volume to 30", "lang": "en", "intent": "volume.set", "slots": {"level": 30}}
+{"id": "en-015", "text": "volume fifty percent", "lang": "en", "intent": "volume.set", "slots": {"level": 50}}
+{"id": "en-016", "text": "sudo, um, turn it down to 15", "lang": "en", "intent": "volume.set", "slots": {"level": 15}}
+{"id": "en-017", "text": "make it louder, like 80", "lang": "en", "intent": "volume.set", "slots": {"level": 80}}
+{"id": "en-018", "text": "turn the volume up a bit", "lang": "en", "intent": "volume.set", "slots": {"delta": 10}}
+{"id": "en-019", "text": "lower the volume by 20", "lang": "en", "intent": "volume.set", "slots": {"delta": -20}}
+{"id": "el-012", "text": "βάλε την ένταση στο 30", "lang": "el", "intent": "volume.set", "slots": {"level": 30}}
+{"id": "el-013", "text": "κατέβασε την ένταση στο 10", "lang": "el", "intent": "volume.set", "slots": {"level": 10}}
+{"id": "el-014", "text": "ανέβασε λίγο τον ήχο", "lang": "el", "intent": "volume.set", "slots": {"delta": 10}}
+{"id": "el-015", "text": "δώσε ένταση στο 70, σε παρακαλώ", "lang": "el", "intent": "volume.set", "slots": {"level": 70}}
+{"id": "el-016", "text": "χαμήλωσε την ένταση κατά 20", "lang": "el", "intent": "volume.set", "slots": {"delta": -20}}
+{"id": "mixed-010", "text": "βάλε το volume στο 40", "lang": "mixed", "intent": "volume.set", "slots": {"level": 40}}
+{"id": "mixed-011", "text": "κάνε το volume στο 100", "lang": "mixed", "intent": "volume.set", "slots": {"level": 100}}
+{"id": "mixed-012", "text": "ανέβασε λίγο το volume", "lang": "mixed", "intent": "volume.set", "slots": {"delta": 10}}
+{"id": "en-020", "text": "mute the sound", "lang": "en", "intent": "volume.mute", "slots": {"mute": true}}
+{"id": "en-021", "text": "unmute", "lang": "en", "intent": "volume.mute", "slots": {"mute": false}}
+{"id": "en-022", "text": "shut it up, mute everything", "lang": "en", "intent": "volume.mute", "slots": {"mute": true}}
+{"id": "en-023", "text": "sudo, uh, turn the sound back on", "lang": "en", "intent": "volume.mute", "slots": {"mute": false}}
+{"id": "el-017", "text": "κλείσε τον ήχο", "lang": "el", "intent": "volume.mute", "slots": {"mute": true}}
+{"id": "el-018", "text": "σίγαση", "lang": "el", "intent": "volume.mute", "slots": {"mute": true}}
+{"id": "el-019", "text": "άνοιξε τον ήχο ξανά", "lang": "el", "intent": "volume.mute", "slots": {"mute": false}}
+{"id": "el-020", "text": "βγάλε τη σίγαση", "lang": "el", "intent": "volume.mute", "slots": {"mute": false}}
+{"id": "mixed-013", "text": "κάνε mute", "lang": "mixed", "intent": "volume.mute", "slots": {"mute": true}}
+{"id": "mixed-014", "text": "κάνε unmute τον ήχο", "lang": "mixed", "intent": "volume.mute", "slots": {"mute": false}}
+{"id": "mixed-015", "text": "βάλε mute το laptop", "lang": "mixed", "intent": "volume.mute", "slots": {"mute": true}}
+{"id": "en-024", "text": "open Spotify", "lang": "en", "intent": "app.open", "slots": {"app": "Spotify"}}
+{"id": "en-025", "text": "launch Chrome", "lang": "en", "intent": "app.open", "slots": {"app": "Chrome"}}
+{"id": "en-026", "text": "sudo, um, open Discord", "lang": "en", "intent": "app.open", "slots": {"app": "Discord"}}
+{"id": "en-027", "text": "can you open the calculator for me", "lang": "en", "intent": "app.open", "slots": {"app": "Calculator"}}
+{"id": "en-028", "text": "start Visual Studio Code", "lang": "en", "intent": "app.open", "slots": {"app": "Visual Studio Code"}}
+{"id": "en-029", "text": "open file explorer", "lang": "en", "intent": "app.open", "slots": {"app": "File Explorer"}}
+{"id": "el-021", "text": "άνοιξε το Spotify", "lang": "el", "intent": "app.open", "slots": {"app": "Spotify"}}
+{"id": "el-022", "text": "άνοιξε το Discord, σε παρακαλώ", "lang": "el", "intent": "app.open", "slots": {"app": "Discord"}}
+{"id": "el-023", "text": "βάλε μου το Chrome", "lang": "el", "intent": "app.open", "slots": {"app": "Chrome"}}
+{"id": "el-024", "text": "άνοιξε το σημειωματάριο", "lang": "el", "intent": "app.open", "slots": {"app": "Notepad"}}
+{"id": "el-025", "text": "άνοιξε την αριθμομηχανή", "lang": "el", "intent": "app.open", "slots": {"app": "Calculator"}}
+{"id": "el-026", "text": "άνοιξε το Visual Studio Code", "lang": "el", "intent": "app.open", "slots": {"app": "Visual Studio Code"}}
+{"id": "mixed-016", "text": "κάνε open το Steam", "lang": "mixed", "intent": "app.open", "slots": {"app": "Steam"}}
+{"id": "mixed-017", "text": "sudo, ξεκίνα το Zoom please", "lang": "mixed", "intent": "app.open", "slots": {"app": "Zoom"}}
+{"id": "el-027", "text": "τρέξε το Outlook", "lang": "el", "intent": "app.open", "slots": {"app": "Outlook"}}
+{"id": "en-030", "text": "close Chrome", "lang": "en", "intent": "app.close", "slots": {"app": "Chrome"}}
+{"id": "en-031", "text": "quit Spotify", "lang": "en", "intent": "app.close", "slots": {"app": "Spotify"}}
+{"id": "en-032", "text": "sudo, uh, shut down Discord", "lang": "en", "intent": "app.close", "slots": {"app": "Discord"}}
+{"id": "en-033", "text": "kill Steam please", "lang": "en", "intent": "app.close", "slots": {"app": "Steam"}}
+{"id": "el-028", "text": "κλείσε το Chrome", "lang": "el", "intent": "app.close", "slots": {"app": "Chrome"}}
+{"id": "el-029", "text": "κλείσε το Spotify", "lang": "el", "intent": "app.close", "slots": {"app": "Spotify"}}
+{"id": "el-030", "text": "τερμάτισε το Discord", "lang": "el", "intent": "app.close", "slots": {"app": "Discord"}}
+{"id": "el-031", "text": "κλείσε το σημειωματάριο", "lang": "el", "intent": "app.close", "slots": {"app": "Notepad"}}
+{"id": "mixed-018", "text": "κάνε close το Zoom", "lang": "mixed", "intent": "app.close", "slots": {"app": "Zoom"}}
+{"id": "mixed-019", "text": "κλείσε το Steam please", "lang": "mixed", "intent": "app.close", "slots": {"app": "Steam"}}
+{"id": "mixed-020", "text": "κάνε quit το Spotify", "lang": "mixed", "intent": "app.close", "slots": {"app": "Spotify"}}
+{"id": "en-034", "text": "snap this window to the left", "lang": "en", "intent": "window.snap", "slots": {"position": "left"}}
+{"id": "en-035", "text": "put the window on the right side", "lang": "en", "intent": "window.snap", "slots": {"position": "right"}}
+{"id": "en-036", "text": "maximize this window", "lang": "en", "intent": "window.snap", "slots": {"position": "maximize"}}
+{"id": "en-037", "text": "sudo, um, minimize it", "lang": "en", "intent": "window.snap", "slots": {"position": "minimize"}}
+{"id": "en-038", "text": "make this fill the top half of the screen", "lang": "en", "intent": "window.snap", "slots": {"position": "top"}}
+{"id": "el-032", "text": "βάλε το παράθυρο αριστερά", "lang": "el", "intent": "window.snap", "slots": {"position": "left"}}
+{"id": "el-033", "text": "στείλε το παράθυρο δεξιά", "lang": "el", "intent": "window.snap", "slots": {"position": "right"}}
+{"id": "el-034", "text": "μεγιστοποίησε το παράθυρο", "lang": "el", "intent": "window.snap", "slots": {"position": "maximize"}}
+{"id": "el-035", "text": "ελαχιστοποίησέ το", "lang": "el", "intent": "window.snap", "slots": {"position": "minimize"}}
+{"id": "el-036", "text": "βάλε το παράθυρο στο κάτω μισό της οθόνης", "lang": "el", "intent": "window.snap", "slots": {"position": "bottom"}}
+{"id": "mixed-021", "text": "κάνε snap το παράθυρο δεξιά", "lang": "mixed", "intent": "window.snap", "slots": {"position": "right"}}
+{"id": "mixed-022", "text": "κάνε maximize αυτό το window", "lang": "mixed", "intent": "window.snap", "slots": {"position": "maximize"}}
+{"id": "mixed-023", "text": "κάνε minimize το window", "lang": "mixed", "intent": "window.snap", "slots": {"position": "minimize"}}
+{"id": "en-039", "text": "search for best pizza near me", "lang": "en", "intent": "web.search", "slots": {"query": "best pizza near me"}}
+{"id": "en-040", "text": "google how to fix a leaking tap", "lang": "en", "intent": "web.search", "slots": {"query": "how to fix a leaking tap"}}
+{"id": "en-041", "text": "look up the weather in Athens tomorrow", "lang": "en", "intent": "web.search", "slots": {"query": "weather in Athens tomorrow"}}
+{"id": "en-042", "text": "sudo, uh, search YouTube for lo-fi beats", "lang": "en", "intent": "web.search", "slots": {"query": "lo-fi beats", "engine": "YouTube"}}
+{"id": "el-037", "text": "ψάξε στο ίντερνετ για συνταγή μουσακά", "lang": "el", "intent": "web.search", "slots": {"query": "συνταγή μουσακά"}}
+{"id": "el-038", "text": "γκούγκλαρε πώς φτιάχνω βιογραφικό", "lang": "el", "intent": "web.search", "slots": {"query": "πώς φτιάχνω βιογραφικό"}}
+{"id": "el-039", "text": "ψάξε στο YouTube για μαθήματα κιθάρας", "lang": "el", "intent": "web.search", "slots": {"query": "μαθήματα κιθάρας", "engine": "YouTube"}}
+{"id": "el-040", "text": "ψάξε τι καιρό θα κάνει αύριο στην Πάτρα", "lang": "el", "intent": "web.search", "slots": {"query": "τι καιρό θα κάνει αύριο στην Πάτρα"}}
+{"id": "mixed-024", "text": "κάνε search για best laptops 2026", "lang": "mixed", "intent": "web.search", "slots": {"query": "best laptops 2026"}}
+{"id": "mixed-025", "text": "γκούγκλαρε python list comprehension", "lang": "mixed", "intent": "web.search", "slots": {"query": "python list comprehension"}}
+{"id": "mixed-026", "text": "ψάξε στο Google για cheap flights to Berlin", "lang": "mixed", "intent": "web.search", "slots": {"query": "cheap flights to Berlin", "engine": "Google"}}
+{"id": "en-043", "text": "open youtube.com", "lang": "en", "intent": "web.open", "slots": {"site": "youtube.com"}}
+{"id": "en-044", "text": "go to github dot com", "lang": "en", "intent": "web.open", "slots": {"site": "github.com"}}
+{"id": "en-045", "text": "pull up Reddit in the browser", "lang": "en", "intent": "web.open", "slots": {"site": "reddit.com"}}
+{"id": "en-046", "text": "sudo, um, open Gmail in the browser", "lang": "en", "intent": "web.open", "slots": {"site": "gmail.com"}}
+{"id": "el-041", "text": "πήγαινε στο Facebook", "lang": "el", "intent": "web.open", "slots": {"site": "facebook.com"}}
+{"id": "el-042", "text": "άνοιξε το skroutz.gr", "lang": "el", "intent": "web.open", "slots": {"site": "skroutz.gr"}}
+{"id": "el-043", "text": "άνοιξε τη Βικιπαίδεια στον περιηγητή", "lang": "el", "intent": "web.open", "slots": {"site": "wikipedia.org"}}
+{"id": "mixed-027", "text": "άνοιξε το github.com στον browser", "lang": "mixed", "intent": "web.open", "slots": {"site": "github.com"}}
+{"id": "mixed-028", "text": "πήγαινε στο Reddit στον browser", "lang": "mixed", "intent": "web.open", "slots": {"site": "reddit.com"}}
+{"id": "mixed-029", "text": "άνοιξε το site amazon.com", "lang": "mixed", "intent": "web.open", "slots": {"site": "amazon.com"}}
+{"id": "en-047", "text": "set an alarm for 7 AM", "lang": "en", "intent": "alarm.set", "slots": {"time": "07:00"}}
+{"id": "en-048", "text": "wake me up at 6:30 in the morning", "lang": "en", "intent": "alarm.set", "slots": {"time": "06:30"}}
+{"id": "en-049", "text": "sudo, um, alarm at quarter past eight in the morning", "lang": "en", "intent": "alarm.set", "slots": {"time": "08:15"}}
+{"id": "en-050", "text": "set an alarm for 10 PM called take pills", "lang": "en", "intent": "alarm.set", "slots": {"time": "22:00", "label": "take pills"}}
+{"id": "en-051", "text": "alarm at 5:45 tomorrow morning", "lang": "en", "intent": "alarm.set", "slots": {"time": "05:45"}}
+{"id": "el-044", "text": "ξύπνα με στις 7 το πρωί", "lang": "el", "intent": "alarm.set", "slots": {"time": "07:00"}}
+{"id": "el-045", "text": "βάλε ξυπνητήρι για τις 6 και μισή το πρωί", "lang": "el", "intent": "alarm.set", "slots": {"time": "06:30"}}
+{"id": "el-046", "text": "βάλε ξυπνητήρι στις οκτώ και τέταρτο το πρωί", "lang": "el", "intent": "alarm.set", "slots": {"time": "08:15"}}
+{"id": "el-047", "text": "ξύπνα με αύριο το πρωί στις έξι παρά τέταρτο", "lang": "el", "intent": "alarm.set", "slots": {"time": "05:45"}}
+{"id": "el-048", "text": "βάλε ξυπνητήρι στις 9 το βράδυ", "lang": "el", "intent": "alarm.set", "slots": {"time": "21:00"}}
+{"id": "mixed-030", "text": "βάλε alarm για τις 7 το πρωί", "lang": "mixed", "intent": "alarm.set", "slots": {"time": "07:00"}}
+{"id": "mixed-031", "text": "κάνε set ένα alarm στις 6:15 το πρωί", "lang": "mixed", "intent": "alarm.set", "slots": {"time": "06:15"}}
+{"id": "mixed-032", "text": "ξύπνα με στις 8 το πρωί sharp", "lang": "mixed", "intent": "alarm.set", "slots": {"time": "08:00"}}
+{"id": "en-052", "text": "set a timer for 10 minutes", "lang": "en", "intent": "timer.set", "slots": {"seconds": 600}}
+{"id": "en-053", "text": "timer thirty seconds", "lang": "en", "intent": "timer.set", "slots": {"seconds": 30}}
+{"id": "en-054", "text": "start a five minute timer for the pasta", "lang": "en", "intent": "timer.set", "slots": {"seconds": 300, "label": "pasta"}}
+{"id": "en-055", "text": "sudo, uh, count down one hour", "lang": "en", "intent": "timer.set", "slots": {"seconds": 3600}}
+{"id": "en-056", "text": "set a timer for an hour and a half", "lang": "en", "intent": "timer.set", "slots": {"seconds": 5400}}
+{"id": "el-049", "text": "βάλε χρονόμετρο για 10 λεπτά", "lang": "el", "intent": "timer.set", "slots": {"seconds": 600}}
+{"id": "el-050", "text": "βάλε μετρητή 45 δευτερόλεπτα", "lang": "el", "intent": "timer.set", "slots": {"seconds": 45}}
+{"id": "el-051", "text": "χρονόμετρο μισή ώρα", "lang": "el", "intent": "timer.set", "slots": {"seconds": 1800}}
+{"id": "el-052", "text": "βάλε αντίστροφη μέτρηση 5 λεπτά για τα μακαρόνια", "lang": "el", "intent": "timer.set", "slots": {"seconds": 300, "label": "μακαρόνια"}}
+{"id": "mixed-033", "text": "βάλε timer για 15 λεπτά", "lang": "mixed", "intent": "timer.set", "slots": {"seconds": 900}}
+{"id": "mixed-034", "text": "κάνε set ένα timer 2 λεπτά", "lang": "mixed", "intent": "timer.set", "slots": {"seconds": 120}}
+{"id": "mixed-035", "text": "timer για μία ώρα", "lang": "mixed", "intent": "timer.set", "slots": {"seconds": 3600}}
+{"id": "en-057", "text": "remind me to call mom at 6 PM", "lang": "en", "intent": "reminder.create", "slots": {"text": "call mom", "time": "18:00"}}
+{"id": "en-058", "text": "remind me tomorrow to buy milk", "lang": "en", "intent": "reminder.create", "slots": {"text": "buy milk", "date": "tomorrow"}}
+{"id": "en-059", "text": "sudo, um, remind me to send the invoice on Friday at 10 AM", "lang": "en", "intent": "reminder.create", "slots": {"text": "send the invoice", "date": "friday", "time": "10:00"}}
+{"id": "en-060", "text": "set a reminder to take out the trash tonight at 9", "lang": "en", "intent": "reminder.create", "slots": {"text": "take out the trash", "date": "today", "time": "21:00"}}
+{"id": "en-061", "text": "don't let me forget the dentist on Monday", "lang": "en", "intent": "reminder.create", "slots": {"text": "dentist", "date": "monday"}}
+{"id": "el-053", "text": "θύμισέ μου να πάρω τη μαμά στις 6 το απόγευμα", "lang": "el", "intent": "reminder.create", "slots": {"text": "να πάρω τη μαμά", "time": "18:00"}}
+{"id": "el-054", "text": "θύμισέ μου αύριο να αγοράσω γάλα", "lang": "el", "intent": "reminder.create", "slots": {"text": "να αγοράσω γάλα", "date": "tomorrow"}}
+{"id": "el-055", "text": "υπενθύμισέ μου την Παρασκευή στις 10 το πρωί να στείλω το τιμολόγιο", "lang": "el", "intent": "reminder.create", "slots": {"text": "να στείλω το τιμολόγιο", "date": "friday", "time": "10:00"}}
+{"id": "el-056", "text": "θύμισέ μου απόψε στις 9 να βγάλω τα σκουπίδια", "lang": "el", "intent": "reminder.create", "slots": {"text": "να βγάλω τα σκουπίδια", "date": "today", "time": "21:00"}}
+{"id": "mixed-036", "text": "βάλε reminder για αύριο να πληρώσω τον λογαριασμό του ρεύματος", "lang": "mixed", "intent": "reminder.create", "slots": {"text": "να πληρώσω τον λογαριασμό του ρεύματος", "date": "tomorrow"}}
+{"id": "mixed-037", "text": "κάνε μου ένα reminder να πάρω τη μαμά στις 6 το απόγευμα", "lang": "mixed", "intent": "reminder.create", "slots": {"text": "να πάρω τη μαμά", "time": "18:00"}}
+{"id": "mixed-038", "text": "θύμισέ μου να κάνω backup τα αρχεία την Κυριακή", "lang": "mixed", "intent": "reminder.create", "slots": {"text": "να κάνω backup τα αρχεία", "date": "sunday"}}
+{"id": "en-062", "text": "what's on my schedule today", "lang": "en", "intent": "schedule.query", "slots": {"date": "today"}}
+{"id": "en-063", "text": "what do I have tomorrow", "lang": "en", "intent": "schedule.query", "slots": {"date": "tomorrow"}}
+{"id": "en-064", "text": "am I free on Friday afternoon", "lang": "en", "intent": "schedule.query", "slots": {"date": "friday"}}
+{"id": "en-065", "text": "sudo, um, what's on my agenda for Monday", "lang": "en", "intent": "schedule.query", "slots": {"date": "monday"}}
+{"id": "el-057", "text": "τι έχω σήμερα στο πρόγραμμα", "lang": "el", "intent": "schedule.query", "slots": {"date": "today"}}
+{"id": "el-058", "text": "τι πρόγραμμα έχω αύριο", "lang": "el", "intent": "schedule.query", "slots": {"date": "tomorrow"}}
+{"id": "el-059", "text": "έχω χρόνο την Παρασκευή το απόγευμα", "lang": "el", "intent": "schedule.query", "slots": {"date": "friday"}}
+{"id": "el-060", "text": "πες μου το πρόγραμμά μου για τη Δευτέρα", "lang": "el", "intent": "schedule.query", "slots": {"date": "monday"}}
+{"id": "mixed-039", "text": "τι meetings έχω αύριο", "lang": "mixed", "intent": "schedule.query", "slots": {"date": "tomorrow"}}
+{"id": "mixed-040", "text": "τι έχω στο calendar σήμερα", "lang": "mixed", "intent": "schedule.query", "slots": {"date": "today"}}
+{"id": "mixed-041", "text": "έχω κάτι στο calendar την Τετάρτη", "lang": "mixed", "intent": "schedule.query", "slots": {"date": "wednesday"}}
+{"id": "en-066", "text": "add a meeting with Nick tomorrow at 3 PM", "lang": "en", "intent": "calendar.create", "slots": {"title": "Meeting with Nick", "date": "tomorrow", "time": "15:00"}}
+{"id": "en-067", "text": "schedule a dentist appointment on Thursday at 11 in the morning for an hour", "lang": "en", "intent": "calendar.create", "slots": {"title": "Dentist appointment", "date": "thursday", "time": "11:00", "duration_minutes": 60}}
+{"id": "en-068", "text": "put lunch with Maria on the calendar for Saturday at 2 PM", "lang": "en", "intent": "calendar.create", "slots": {"title": "Lunch with Maria", "date": "saturday", "time": "14:00"}}
+{"id": "en-069", "text": "sudo, um, create an event called project review on Monday at 9:30 AM for 45 minutes", "lang": "en", "intent": "calendar.create", "slots": {"title": "Project review", "date": "monday", "time": "09:30", "duration_minutes": 45}}
+{"id": "el-061", "text": "βάλε στο ημερολόγιο ραντεβού με τον οδοντίατρο την Πέμπτη στις 11 το πρωί", "lang": "el", "intent": "calendar.create", "slots": {"title": "Ραντεβού με τον οδοντίατρο", "date": "thursday", "time": "11:00"}}
+{"id": "el-062", "text": "κλείσε μια συνάντηση με τον Νίκο αύριο στις 3 το απόγευμα", "lang": "el", "intent": "calendar.create", "slots": {"title": "Συνάντηση με τον Νίκο", "date": "tomorrow", "time": "15:00"}}
+{"id": "el-063", "text": "πρόσθεσε στο ημερολόγιο φαγητό με τη Μαρία το Σάββατο στις 2 το απόγευμα", "lang": "el", "intent": "calendar.create", "slots": {"title": "Φαγητό με τη Μαρία", "date": "saturday", "time": "14:00"}}
+{"id": "el-064", "text": "φτιάξε στο ημερολόγιο εκδήλωση ανασκόπηση έργου τη Δευτέρα στις 9:30 το πρωί για 45 λεπτά", "lang": "el", "intent": "calendar.create", "slots": {"title": "Ανασκόπηση έργου", "date": "monday", "time": "09:30", "duration_minutes": 45}}
+{"id": "mixed-042", "text": "κάνε add ένα meeting με τον Νίκο αύριο στις 3 το απόγευμα", "lang": "mixed", "intent": "calendar.create", "slots": {"title": "Meeting με τον Νίκο", "date": "tomorrow", "time": "15:00"}}
+{"id": "mixed-043", "text": "βάλε στο calendar dentist την Πέμπτη στις 11 το πρωί", "lang": "mixed", "intent": "calendar.create", "slots": {"title": "Dentist", "date": "thursday", "time": "11:00"}}
+{"id": "mixed-044", "text": "κάνε schedule ένα call με την ομάδα την Τρίτη στις 5 το απόγευμα για 30 λεπτά", "lang": "mixed", "intent": "calendar.create", "slots": {"title": "Call με την ομάδα", "date": "tuesday", "time": "17:00", "duration_minutes": 30}}
+{"id": "en-070", "text": "summarize my unread emails", "lang": "en", "intent": "email.summary", "slots": {"scope": "unread"}}
+{"id": "en-071", "text": "anything important in my emails", "lang": "en", "intent": "email.summary", "slots": {"scope": "important"}}
+{"id": "en-072", "text": "what did Alex email me about", "lang": "en", "intent": "email.summary", "slots": {"sender": "Alex"}}
+{"id": "en-073", "text": "sudo, um, give me a rundown of my inbox", "lang": "en", "intent": "email.summary", "slots": {}}
+{"id": "en-074", "text": "go through today's emails", "lang": "en", "intent": "email.summary", "slots": {"scope": "today"}}
+{"id": "el-065", "text": "κάνε μια σύνοψη στα αδιάβαστα email μου", "lang": "el", "intent": "email.summary", "slots": {"scope": "unread"}}
+{"id": "el-066", "text": "έχω κάτι σημαντικό στα μέιλ μου", "lang": "el", "intent": "email.summary", "slots": {"scope": "important"}}
+{"id": "el-067", "text": "τι μου έστειλε ο Αλέξης στο email", "lang": "el", "intent": "email.summary", "slots": {"sender": "Αλέξης"}}
+{"id": "el-068", "text": "πες μου τι έγραφαν τα μέιλ σήμερα", "lang": "el", "intent": "email.summary", "slots": {"scope": "today"}}
+{"id": "mixed-045", "text": "κάνε summarize τα unread emails μου", "lang": "mixed", "intent": "email.summary", "slots": {"scope": "unread"}}
+{"id": "mixed-046", "text": "έχω κανένα important email", "lang": "mixed", "intent": "email.summary", "slots": {"scope": "important"}}
+{"id": "mixed-047", "text": "τι έγραψε η Μαρία στο mail της", "lang": "mixed", "intent": "email.summary", "slots": {"sender": "Μαρία"}}
+{"id": "en-075", "text": "lock the computer", "lang": "en", "intent": "system.lock", "slots": {}}
+{"id": "en-076", "text": "lock my screen", "lang": "en", "intent": "system.lock", "slots": {}}
+{"id": "en-077", "text": "sudo, um, lock it", "lang": "en", "intent": "system.lock", "slots": {}}
+{"id": "en-078", "text": "I'm stepping away, lock the PC", "lang": "en", "intent": "system.lock", "slots": {}}
+{"id": "el-069", "text": "κλείδωσε τον υπολογιστή", "lang": "el", "intent": "system.lock", "slots": {}}
+{"id": "el-070", "text": "κλείδωσε την οθόνη", "lang": "el", "intent": "system.lock", "slots": {}}
+{"id": "el-071", "text": "κλείδωσέ τον, φεύγω", "lang": "el", "intent": "system.lock", "slots": {}}
+{"id": "mixed-048", "text": "κάνε lock τον υπολογιστή", "lang": "mixed", "intent": "system.lock", "slots": {}}
+{"id": "mixed-049", "text": "κάνε lock το PC", "lang": "mixed", "intent": "system.lock", "slots": {}}
+{"id": "mixed-050", "text": "lock την οθόνη σε παρακαλώ", "lang": "mixed", "intent": "system.lock", "slots": {}}
+{"id": "en-079", "text": "take a screenshot", "lang": "en", "intent": "system.screenshot", "slots": {}}
+{"id": "en-080", "text": "screenshot of this window", "lang": "en", "intent": "system.screenshot", "slots": {"region": "window"}}
+{"id": "en-081", "text": "I want to capture just part of the screen", "lang": "en", "intent": "system.screenshot", "slots": {"region": "selection"}}
+{"id": "en-082", "text": "sudo, uh, grab a screenshot of the whole screen", "lang": "en", "intent": "system.screenshot", "slots": {"region": "full"}}
+{"id": "el-072", "text": "βγάλε στιγμιότυπο οθόνης", "lang": "el", "intent": "system.screenshot", "slots": {}}
+{"id": "el-073", "text": "τράβα στιγμιότυπο μόνο από αυτό το παράθυρο", "lang": "el", "intent": "system.screenshot", "slots": {"region": "window"}}
+{"id": "el-074", "text": "θέλω στιγμιότυπο ενός τμήματος της οθόνης", "lang": "el", "intent": "system.screenshot", "slots": {"region": "selection"}}
+{"id": "mixed-051", "text": "βγάλε ένα screenshot", "lang": "mixed", "intent": "system.screenshot", "slots": {}}
+{"id": "mixed-052", "text": "κάνε screenshot το παράθυρο", "lang": "mixed", "intent": "system.screenshot", "slots": {"region": "window"}}
+{"id": "mixed-053", "text": "πάρε screenshot μόνο ένα κομμάτι της οθόνης", "lang": "mixed", "intent": "system.screenshot", "slots": {"region": "selection"}}
+{"id": "en-083", "text": "open Bluetooth settings", "lang": "en", "intent": "settings.open", "slots": {"page": "bluetooth"}}
+{"id": "en-084", "text": "open display settings", "lang": "en", "intent": "settings.open", "slots": {"page": "display"}}
+{"id": "en-085", "text": "take me to the Wi-Fi settings", "lang": "en", "intent": "settings.open", "slots": {"page": "wifi"}}
+{"id": "en-086", "text": "sudo, um, open sound settings", "lang": "en", "intent": "settings.open", "slots": {"page": "sound"}}
+{"id": "en-087", "text": "open Windows update", "lang": "en", "intent": "settings.open", "slots": {"page": "update"}}
+{"id": "en-088", "text": "open settings", "lang": "en", "intent": "settings.open", "slots": {}}
+{"id": "el-075", "text": "άνοιξε τις ρυθμίσεις του Bluetooth", "lang": "el", "intent": "settings.open", "slots": {"page": "bluetooth"}}
+{"id": "el-076", "text": "άνοιξε τις ρυθμίσεις οθόνης", "lang": "el", "intent": "settings.open", "slots": {"page": "display"}}
+{"id": "el-077", "text": "πήγαινε στις ρυθμίσεις του wifi", "lang": "el", "intent": "settings.open", "slots": {"page": "wifi"}}
+{"id": "el-078", "text": "άνοιξε τις ρυθμίσεις ήχου", "lang": "el", "intent": "settings.open", "slots": {"page": "sound"}}
+{"id": "el-079", "text": "άνοιξε τις ρυθμίσεις της μπαταρίας", "lang": "el", "intent": "settings.open", "slots": {"page": "battery"}}
+{"id": "mixed-054", "text": "άνοιξε τα settings του Bluetooth", "lang": "mixed", "intent": "settings.open", "slots": {"page": "bluetooth"}}
+{"id": "mixed-055", "text": "άνοιξε τα display settings", "lang": "mixed", "intent": "settings.open", "slots": {"page": "display"}}
+{"id": "mixed-056", "text": "πήγαινε στα settings για το Windows Update", "lang": "mixed", "intent": "settings.open", "slots": {"page": "update"}}
+{"id": "en-089", "text": "how are you today", "lang": "en", "intent": "chat", "slots": {}}
+{"id": "en-090", "text": "tell me a joke", "lang": "en", "intent": "chat", "slots": {}}
+{"id": "en-091", "text": "what's the capital of Australia", "lang": "en", "intent": "chat", "slots": {}}
+{"id": "en-092", "text": "sudo, um, do you think I should learn Rust", "lang": "en", "intent": "chat", "slots": {}}
+{"id": "en-093", "text": "what's the difference between RAM and storage", "lang": "en", "intent": "chat", "slots": {}}
+{"id": "el-080", "text": "πώς είσαι σήμερα", "lang": "el", "intent": "chat", "slots": {}}
+{"id": "el-081", "text": "πες μου ένα ανέκδοτο", "lang": "el", "intent": "chat", "slots": {}}
+{"id": "el-082", "text": "ποια είναι η πρωτεύουσα της Αυστραλίας", "lang": "el", "intent": "chat", "slots": {}}
+{"id": "el-083", "text": "πες μου κάτι ενδιαφέρον για το διάστημα", "lang": "el", "intent": "chat", "slots": {}}
+{"id": "el-084", "text": "μου έχουν λείψει οι διακοπές, πες μου κάτι να με φτιάξεις", "lang": "el", "intent": "chat", "slots": {}}
+{"id": "mixed-057", "text": "τι διαφορά έχει η RAM από το storage", "lang": "mixed", "intent": "chat", "slots": {}}
+{"id": "mixed-058", "text": "τι λες, να μάθω Rust", "lang": "mixed", "intent": "chat", "slots": {}}
+{"id": "mixed-059", "text": "τι σημαίνει latency", "lang": "mixed", "intent": "chat", "slots": {}}

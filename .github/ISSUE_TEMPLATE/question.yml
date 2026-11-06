@@ -1,0 +1,19 @@
+name: Question
+description: Ask how something works or how to set it up.
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: The [README FAQ](https://github.com/panmm942-ui/sudo-agent#faq) and [troubleshooting guide](https://github.com/panmm942-ui/sudo-agent/blob/master/docs/TROUBLESHOOTING.md) answer the most common questions.
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Sudo version (if relevant)
+      placeholder: "0.2.7"

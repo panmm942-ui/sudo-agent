@@ -1,0 +1,20 @@
+[
+  {
+    "name": "watch",
+    "source": "https://bigsoundbank.com/digital-watch-alarm-s2256.html",
+    "download": "https://bigsoundbank.com/UPLOAD/mp3/2256.mp3",
+    "license": "CC0",
+    "author": "Joseph SARDIN",
+    "bytes": 402554,
+    "sha256": "b1c8a12db018adf5d0a429c8f3d92f402b949a300153c34b87aaf1c583afce2c"
+  },
+  {
+    "name": "bell",
+    "source": "https://bigsoundbank.com/mechanical-alarm-clock-ring-1-s2657.html",
+    "download": "https://bigsoundbank.com/UPLOAD/mp3/2657.mp3",
+    "license": "CC0",
+    "author": "Joseph SARDIN",
+    "bytes": 125216,
+    "sha256": "f5881dcef0bf6b143822c7ac51112939f919e4add3085f2561e2a8103498908b"
+  }
+]
