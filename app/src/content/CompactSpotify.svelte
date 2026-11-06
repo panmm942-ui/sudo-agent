@@ -2,11 +2,11 @@
   import {advanceWave,waveHeights,waveScale, type SpotifySpectrum,type WaveStyle} from '../island/waveform';
   import type { SpotifyTrack } from "../island/spotify";
   import Marquee from "./Marquee.svelte";
-  let { marquee = true, track, waves, reduceMotion, onclick, reactive = false, level = null,sensitivity=1.6,style='classic',reactivity=40,smoothness=65 }: {
+  let { orb = false, marquee = true, track, waves, reduceMotion, onclick, reactive = false, level = null,sensitivity=1.6,style='classic',reactivity=40,smoothness=65 }: {
     style?:WaveStyle;reactivity?:number;smoothness?:number;
     sensitivity?:number;
     marquee?: boolean;
-    track: SpotifyTrack; waves: boolean; reduceMotion: boolean; onclick: () => void;
+    track: SpotifyTrack; waves: boolean; orb?: boolean; reduceMotion: boolean; onclick: () => void;
     reactive?: boolean; level?: SpotifySpectrum | null;
   } = $props();
   const bars = $derived(waveHeights(style));
@@ -31,11 +31,11 @@
   });
 </script>
 
-<button type="button" class="mini" aria-label={`Expand Spotify · ${track.title || "No track selected"}`} {onclick}>
+<button type="button" class="mini" class:with-orb={orb} aria-label={`Expand Spotify · ${track.title || "No track selected"}`} {onclick}>
   {#if track.artwork}<img src={track.artwork} width="32" height="32" alt="" />
   {:else}<span class="empty" aria-hidden="true">♪</span>{/if}
   <span class="copy"><strong><Marquee text={track.title || "Spotify"} enabled={marquee} /></strong><small><Marquee text={track.artist || "No track selected"} enabled={marquee} /></small></span>
-  {#if waves}
+  {#if waves && !orb}
     <span bind:this={waveElement} class="wave" class:playing={track.playing} class:still={reduceMotion} class:reactive aria-label={reactive && level===null ? "Spotify audio level unavailable" : undefined} aria-hidden="true">
       {#each bars as height,index (index)}<i style:height={`${height}px`}></i>{/each}
     </span>
@@ -43,6 +43,8 @@
 </button>
 
 <style>
+  /* The Sudo orb sits at the right end while the song is paused. */
+  .mini.with-orb { padding-right: 34px; }
   .mini { display: flex; align-items: center; gap: 9px; width: 100%; height: 100%; padding: 0 13px 0 7px; border: 0; border-radius: var(--radius-pill); background: transparent; color: inherit; text-align: left; cursor: pointer; }
   .mini:focus-visible { outline-offset: -3px; }
   img, .empty { flex: none; width: 32px; height: 32px; object-fit: cover; border-radius: 10px; }

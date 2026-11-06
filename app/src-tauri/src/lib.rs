@@ -14,6 +14,7 @@ mod updates;
 mod vocals;
 mod jarvis;
 mod commands;
+mod automation;
 mod router;
 mod touchpad;
 mod extension_net;

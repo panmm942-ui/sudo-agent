@@ -24,13 +24,15 @@ const CONTEXT: &str = "4096";
 const TYPED_TURN_BASE: u64 = 1 << 40;
 /// Without "Keep AI loaded", the model, Whisper and the voice unload after this much quiet;
 /// only the light wake listener keeps running.
-const IDLE_UNLOAD: Duration = Duration::from_secs(5 * 60);
+const IDLE_UNLOAD: Duration = Duration::from_secs(20 * 60);
+/// The voice process is restarted this many times after an unexpected exit before giving up.
+const VOICE_RESTARTS: u32 = 3;
 
 #[derive(Default, Clone)]
 pub struct Controller(Arc<Mutex<Runtime>>);
 
 struct Llm { child: Child, port: u16, key: String, ready: bool }
-struct Voice { child: Child, stdin: ChildStdin, ready: bool }
+struct Voice { child: Child, stdin: ChildStdin, ready: bool, wake: bool, keep: bool, restarts: u32 }
 
 struct Runtime {
     generation: u64,
@@ -62,6 +64,12 @@ impl Default for Runtime {
             setup_busy: false, setup_cancelled: false, keep_loaded: false, last_active: Instant::now(),
         }
     }
+}
+
+/// The runtime lock. A panic while it was held (a bug in one answer) must not leave Sudo AI dead
+/// for the rest of the session, so a poisoned lock is simply taken over.
+fn lock(shared: &Mutex<Runtime>) -> Result<std::sync::MutexGuard<'_, Runtime>, String> {
+    Ok(shared.lock().unwrap_or_else(|poisoned| poisoned.into_inner()))
 }
 
 impl Runtime {
@@ -190,13 +198,20 @@ fn spawn_voice(data: &Path, wake: bool, keep: bool) -> Result<(Voice, std::proce
     if let Some(microphone) = load_microphone(data) { command.env("JARVIS_INPUT_DEVICE", microphone); }
     command.env("HF_HUB_OFFLINE", "1").env("CUDA_CACHE_PATH", data.join("cuda-cache"))
         .stdin(Stdio::piped()).stdout(Stdio::piped())
-        .stderr(std::fs::File::create(data.join("jarvis-voice.log")).map_err(|e| e.to_string())?);
+        .stderr(voice_log(data)?);
     hidden(&mut command);
     let mut child = command.spawn().map_err(|e| format!("Could not start Sudo AI voice: {e}"))?;
     bind_to_app(&child);
     let stdin = child.stdin.take().ok_or("Voice process has no control pipe.")?;
     let stdout = child.stdout.take().ok_or("Voice process has no status pipe.")?;
-    Ok((Voice { child, stdin, ready: false }, stdout))
+    Ok((Voice { child, stdin, ready: false, wake, keep, restarts: 0 }, stdout))
+}
+
+/// The voice log, appended (a restart after a crash keeps the crash's details) and trimmed when large.
+fn voice_log(data: &Path) -> Result<std::fs::File, String> {
+    let path = data.join("jarvis-voice.log");
+    if std::fs::metadata(&path).map(|m| m.len() > 2_000_000).unwrap_or(false) { let _ = std::fs::remove_file(&path); }
+    std::fs::OpenOptions::new().create(true).append(true).open(path).map_err(|e| e.to_string())
 }
 
 pub(crate) fn kill(child: &mut Child) {
@@ -257,7 +272,7 @@ fn start(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, wake: bool) -> Result<()
     let data = data_root();
     let gaps = missing(&data);
     if !gaps.is_empty() { return Err(format!("Sudo AI is not set up yet (missing {}). Download it in Settings first.", gaps.join(", "))); }
-    let mut runtime = shared.lock().map_err(|e| e.to_string())?;
+    let mut runtime = lock(&shared).map_err(|e| e.to_string())?;
     if runtime.setup_busy { return Err("Wait for Sudo AI setup to finish.".into()); }
     if runtime.llm.is_some() || runtime.voice.is_some() { return Ok(()); }
     runtime.generation += 1;
@@ -282,7 +297,7 @@ fn start(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, wake: bool) -> Result<()
 /// Starts the model server if it is not running (on "Hey Sudo", the key, or a typed question) and
 /// asks the voice process to load Whisper and the voice. Loading overlaps with the user speaking.
 fn ensure_llm(app: &AppHandle, shared: &Arc<Mutex<Runtime>>) {
-    let Ok(mut runtime) = shared.lock() else { return };
+    let Ok(mut runtime) = lock(&shared) else { return };
     runtime.last_active = Instant::now();
     if runtime.voice.is_none() { return; } // Sudo AI is off
     runtime.send_voice(json!({"command":"warm"}));
@@ -306,7 +321,7 @@ fn ensure_llm(app: &AppHandle, shared: &Arc<Mutex<Runtime>>) {
 fn unload_when_idle(app: AppHandle, shared: Arc<Mutex<Runtime>>, generation: u64) {
     loop {
         std::thread::sleep(Duration::from_secs(5));
-        let Ok(mut runtime) = shared.lock() else { return };
+        let Ok(mut runtime) = lock(&shared) else { return };
         if runtime.generation != generation { return; }
         let idle = runtime.last_active.elapsed() >= IDLE_UNLOAD;
         if runtime.keep_loaded || !idle || runtime.llm.as_ref().is_none_or(|l| !l.ready) { continue; }
@@ -318,7 +333,7 @@ fn unload_when_idle(app: AppHandle, shared: Arc<Mutex<Runtime>>, generation: u64
 }
 
 fn stop(app: &AppHandle, shared: &Arc<Mutex<Runtime>>) {
-    let Ok(mut runtime) = shared.lock() else { return };
+    let Ok(mut runtime) = lock(&shared) else { return };
     runtime.generation += 1;
     runtime.cancel.store(true, Ordering::SeqCst);
     if let Some(mut voice) = runtime.voice.take() {
@@ -351,7 +366,7 @@ fn wait_for_llm(app: AppHandle, shared: Arc<Mutex<Runtime>>, generation: u64) {
     let Ok(client) = client else { return };
     loop {
         let (port, key) = {
-            let Ok(mut runtime) = shared.lock() else { return };
+            let Ok(mut runtime) = lock(&shared) else { return };
             if runtime.generation != generation { return; }
             let Some(llm) = runtime.llm.as_mut() else { return };
             if let Ok(Some(status)) = llm.child.try_wait() {
@@ -366,7 +381,7 @@ fn wait_for_llm(app: AppHandle, shared: Arc<Mutex<Runtime>>, generation: u64) {
             // Warm-up: compiles kernels and caches the system prompt before the first real turn.
             let body = json!({"messages":[{"role":"system","content":system_prompt("en")},{"role":"user","content":"Hi"}],"max_tokens":1});
             let _ = client.post(format!("http://127.0.0.1:{port}/v1/chat/completions")).bearer_auth(&key).header("Content-Type", "application/json").body(body.to_string()).send();
-            if let Ok(mut runtime) = shared.lock() {
+            if let Ok(mut runtime) = lock(&shared) {
                 if runtime.generation != generation { return; }
                 if let Some(llm) = runtime.llm.as_mut() { llm.ready = true; }
                 update_ready(&app, &mut runtime);
@@ -374,7 +389,7 @@ fn wait_for_llm(app: AppHandle, shared: Arc<Mutex<Runtime>>, generation: u64) {
             return;
         }
         if Instant::now() > deadline {
-            if let Ok(mut runtime) = shared.lock() { set_phase(&app, &mut runtime, "error", "The local model did not load in time. See jarvis-llm.log."); }
+            if let Ok(mut runtime) = lock(&shared) { set_phase(&app, &mut runtime, "error", "The local model did not load in time. See jarvis-llm.log."); }
             return;
         }
         std::thread::sleep(Duration::from_millis(250));
@@ -389,19 +404,37 @@ fn read_voice(app: AppHandle, shared: Arc<Mutex<Runtime>>, generation: u64, stdo
             let _ = app.emit("jarvis_level", &event);
             continue;
         }
-        if shared.lock().map(|r| r.generation != generation).unwrap_or(true) { return; }
+        if lock(&shared).map(|r| r.generation != generation).unwrap_or(true) { return; }
         on_voice_event(&app, &shared, event);
     }
-    if let Ok(mut runtime) = shared.lock() {
-        if runtime.generation != generation { return; }
-        runtime.voice = None;
-        let message = if runtime.phase == "error" { runtime.message.clone() } else { "Sudo AI voice stopped. See jarvis-voice.log in the data folder.".into() };
-        set_phase(&app, &mut runtime, "error", message);
+    let Ok(mut runtime) = lock(&shared) else { return };
+    if runtime.generation != generation { return; }
+    let Some(mut old) = runtime.voice.take() else { return };
+    let _ = old.child.try_wait();
+    let _ = app.emit("jarvis_speech", json!({"speaking":false}));
+    // An unexpected exit (microphone or speaker unplugged, a crash in a speech library) restarts the
+    // voice instead of leaving Sudo AI off until the app restarts.
+    if old.restarts < VOICE_RESTARTS {
+        std::thread::sleep(Duration::from_millis(800 * u64::from(old.restarts + 1)));
+        if runtime.generation == generation {
+            if let Ok((mut voice, stdout)) = spawn_voice(&data_root(), old.wake, old.keep) {
+                voice.restarts = old.restarts + 1;
+                runtime.voice = Some(voice);
+                runtime.message = "Restarting Sudo AI voice…".into();
+                let _ = app.emit("jarvis_status", json!({"phase":runtime.phase,"message":runtime.message}));
+                drop(runtime);
+                let (app2, shared2) = (app.clone(), shared.clone());
+                std::thread::spawn(move || read_voice(app2, shared2, generation, stdout));
+                return;
+            }
+        }
     }
+    let message = if runtime.phase == "error" { runtime.message.clone() } else { "Sudo AI voice stopped. See jarvis-voice.log in the data folder.".into() };
+    set_phase(&app, &mut runtime, "error", message);
 }
 
 fn on_voice_event(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, event: Value) {
-    let Ok(mut runtime) = shared.lock() else { return };
+    let Ok(mut runtime) = lock(&shared) else { return };
     match event["event"].as_str().unwrap_or_default() {
         "loading" => if runtime.phase == "loading" { set_phase(app, &mut runtime, "loading", "Loading Sudo AI (speech models)…") },
         "ready" => {
@@ -409,14 +442,26 @@ fn on_voice_event(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, event: Value) {
             runtime.last["voice"] = event.clone();
             update_ready(app, &mut runtime);
         }
-        "wake" => {
+        "wake" | "barge" => {
+            // "barge": the user talked over Sudo; its answer stopped and it is listening again.
             runtime.cancel.store(true, Ordering::SeqCst);
+            let _ = app.emit("jarvis_speech", json!({"speaking":false}));
             let _ = app.emit("jarvis_wake", ());
             drop(runtime);
             ensure_llm(app, shared); // start loading while the user is still speaking
         }
+        "follow_end" => {
+            // Nobody followed up after the answer: the conversation is over.
+            let _ = app.emit("jarvis_idle", ());
+        }
+        "speech_stopped" => { let _ = app.emit("jarvis_speech", json!({"speaking":false})); }
         "speaking" | "warm" | "listening" => {
             runtime.last_active = Instant::now();
+            if event["event"] == "listening" && event["follow"] == true {
+                // Listening for a follow-up after the answer, without the wake word.
+                let _ = app.emit("jarvis_listening", json!({"follow":true}));
+            }
+            if event["event"] == "speaking" { let _ = app.emit("jarvis_speech", json!({"speaking":true})); }
             if event["event"] == "speaking" {
                 let turn = event["turn"].as_u64().unwrap_or(0);
                 if let Some(metrics) = runtime.turns.get_mut(&turn) {
@@ -439,11 +484,25 @@ fn on_voice_event(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, event: Value) {
             begin_turn(app, shared, utterance, text, lang);
         }
         "spoken" => {
+            let _ = app.emit("jarvis_speech", json!({"speaking":false}));
             let turn = event["turn"].as_u64().unwrap_or(0);
             if let Some(metrics) = runtime.turns.remove(&turn) { record(&mut runtime, metrics); }
         }
-        "error" => { let message = event["message"].as_str().unwrap_or("Voice error").to_string(); runtime.message = message; }
+        "error" => {
+            let message = event["message"].as_str().unwrap_or("Voice error").to_string();
+            log_line(&format!("voice error: {message}"));
+            runtime.message = message;
+        }
         _ => {}
+    }
+}
+
+/// One line in jarvis-errors.log (kept small) so problems on another PC can be read afterwards.
+fn log_line(line: &str) {
+    let path = data_root().join("jarvis-errors.log");
+    if std::fs::metadata(&path).map(|m| m.len() > 500_000).unwrap_or(false) { let _ = std::fs::remove_file(&path); }
+    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{} {line}", local_now());
     }
 }
 
@@ -462,16 +521,28 @@ fn record(runtime: &mut Runtime, metrics: Value) {
 fn system_prompt(lang: &str) -> String {
     let language = if lang == "el" { "Greek (Ελληνικά)" } else { "English" };
     let now = local_now();
+    let greek = if lang == "el" {
+        "Write natural, correct Modern Greek with proper accents and grammar (agreement of gender, number and case), \
+the way a native speaker talks; never mix in English words that have a common Greek equivalent. "
+    } else { "" };
     format!("You are Sudo, a private assistant running entirely on the user's own Windows PC; nothing they say leaves it. \
-It is {now}. Answer in {language}, the language the user just used, even if earlier messages were in another language. \
+It is {now}. Answer in {language}, the language the user just used, even if earlier messages were in another language. {greek}\
 Be direct and genuinely useful: answer the question that was asked, give your real opinion when asked, and skip disclaimers, \
 lectures and filler. Remember and use what the user told you earlier in this conversation. \
+Only state facts you are sure of; if you don't know or aren't sure, say so briefly instead of guessing. \
 Your replies are spoken aloud: keep them short (one to three sentences) unless the user asks for detail, \
 and use plain text only, with no markdown, lists, emoji or code blocks. \
-You cannot act on the computer yourself. Sudo itself handles simple commands before they reach you (taking a screenshot, \
-opening an installed app, typing text, play or pause, next or previous song, volume and mute). If the user asks you to do \
-anything else on the computer, never say or imply that you did it: say you can't do that yet, and suggest the exact simple \
-command if one fits, such as \"open Spotify\" or \"take a screenshot\".")
+You can act on the computer. When the user asks you to DO something on the PC (not to explain it), reply with ONLY one JSON \
+object on a single line and no other text. The actions are: \
+{{\"action\":\"play_song\",\"query\":\"song and artist\"}}, {{\"action\":\"find_song\",\"query\":\"...\"}}, \
+{{\"action\":\"open_app\",\"app\":\"name\"}}, {{\"action\":\"close_app\",\"app\":\"name or empty for the current window\"}}, \
+{{\"action\":\"type_text\",\"text\":\"exact text\"}}, {{\"action\":\"click\",\"target\":\"button or link text, or empty to click where the mouse is\",\"button\":\"left|right\",\"double\":false}}, \
+{{\"action\":\"press_keys\",\"keys\":\"ctrl+c\"}}, {{\"action\":\"scroll\",\"direction\":\"down|up\"}}, \
+{{\"action\":\"web_search\",\"query\":\"...\"}}, {{\"action\":\"open_url\",\"url\":\"https://...\"}}, \
+{{\"action\":\"screenshot\"}}, {{\"action\":\"play_pause\"}}, {{\"action\":\"next_track\"}}, {{\"action\":\"previous_track\"}}, \
+{{\"action\":\"volume_up\"}}, {{\"action\":\"volume_down\"}}, {{\"action\":\"mute\"}}. \
+Keep song names, app names and typed text exactly as the user said them. For anything none of these can do, say plainly that \
+you can't do that yet; never claim you did something you didn't.")
 }
 
 /// "Thursday 6 November 2026, 04:30" in local time, so the model knows when "now" is.
@@ -513,7 +584,7 @@ fn trim_history(history: &mut Vec<Value>) {
 }
 
 fn begin_turn(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, turn: u64, text: String, lang: &'static str) {
-    let Ok(mut runtime) = shared.lock() else { return };
+    let Ok(mut runtime) = lock(&shared) else { return };
     runtime.cancel.store(true, Ordering::SeqCst);
     let cancel = Arc::new(AtomicBool::new(false));
     runtime.cancel = cancel.clone();
@@ -540,27 +611,42 @@ fn begin_turn(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, turn: u64, text: St
     }).ok();
 }
 
-/// Fast commands go first: an exact phrase (instant) or the GLiNER router (about 160 ms) turns
-/// "take a screenshot", "άνοιξε το Spotify" or "next song" into a native action without the
-/// language model. Questions, unclear requests and anything that can't be checked (an app that
-/// isn't installed) return false and go to the model. Returns true when the turn was handled.
+/// The decider goes first, on every request: an exact phrase (instant) or the GLiNER router (about
+/// 200 ms) turns "take a screenshot", "παίξε Φως", "click on Sign in" or "next song" into a native
+/// action without the language model. When it says "conversation", isn't sure, or the details
+/// can't be checked (an app that isn't installed), it hands the request to the model, which can
+/// still act through `Action::from_json`. Returns true when the turn was handled.
 fn fast_command(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, turn: u64, text: &str, lang: &'static str, cancel: &AtomicBool) -> bool {
     let started = Instant::now();
     let (action, level, route_ms, confidence) = if let Some(action) = commands::parse(text) {
         (action, 0, 0, 1.0)
-    } else if commands::looks_like_question(text) {
-        return false;
     } else {
         // Asleep: wake the router and the model together (the model is needed if it isn't a command).
         if router::installed(&data_root()) && !router::running() { ensure_llm(app, shared); }
         let Some((intent, confidence, ms)) = router::classify(text) else { return false };
-        if confidence < router::CONFIDENT { return false; }
+        // A question that mentions a command ("what is a screenshot?") needs a very sure decider.
+        let needed = if commands::looks_like_question(text) { 0.9 } else { router::CONFIDENT };
+        if intent == "chat" || confidence < needed { return false; }
         let Some(action) = commands::resolve(&intent, text) else { return false };
         (action, 1, ms, confidence)
     };
     if cancel.load(Ordering::SeqCst) { return true; }
-    let Ok(reply) = commands::execute(&action, lang) else { return false };
-    let Ok(mut runtime) = shared.lock() else { return true };
+    if action == commands::Action::Dismiss {
+        // "Sudo stop": silence, stop listening, and the island returns to its normal view.
+        if let Ok(mut runtime) = lock(&shared) {
+            runtime.send_voice(json!({"command":"stop_speaking"}));
+            runtime.send_voice(json!({"command":"conversation_end"}));
+            runtime.turns.remove(&turn);
+        }
+        let _ = app.emit("jarvis_speech", json!({"speaking":false}));
+        let _ = app.emit("jarvis_idle", ());
+        return true;
+    }
+    let reply = match commands::execute(&action, lang) {
+        Ok(reply) => reply,
+        Err(reason) => { log_line(&format!("fast command {:?} failed: {reason}", commands::describe(&action))); return false; }
+    };
+    let Ok(mut runtime) = lock(&shared) else { return true };
     runtime.history.push(json!({"role":"user","content":text}));
     runtime.history.push(json!({"role":"assistant","content":reply}));
     trim_history(&mut runtime.history);
@@ -584,10 +670,11 @@ fn fast_command(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, turn: u64, text: 
 
 /// A turn for the language model (Qwen), streamed and spoken sentence by sentence.
 fn model_turn(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, turn: u64, text: String, lang: &'static str, cancel: Arc<AtomicBool>) {
-    let Ok(runtime) = shared.lock() else { return };
+    let Ok(runtime) = lock(&shared) else { return };
     if cancel.load(Ordering::SeqCst) { return; }
     let cold = !runtime.llm_ready();
     let mut messages = vec![json!({"role":"system","content":system_prompt(lang)})];
+    messages.extend(examples());
     messages.extend(runtime.history.iter().cloned());
     messages.push(json!({"role":"user","content":text}));
     let speak = runtime.voice_ready();
@@ -597,6 +684,9 @@ fn model_turn(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, turn: u64, text: St
     if let Some(vocal) = app.try_state::<vocals::Controller>() { vocals::set_paused(vocal.inner(), true); }
     let (app, shared) = (app.clone(), shared.clone());
     std::thread::spawn(move || {
+      let guard_app = app.clone();
+      // Like the turn thread: a bug while answering says so instead of closing Sudo or hanging.
+      let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
         let waited = Instant::now();
         let Some((port, key)) = wait_until_loaded(&shared, &cancel) else {
             if let Some(vocal) = app.try_state::<vocals::Controller>() { vocals::set_paused(vocal.inner(), false); }
@@ -608,7 +698,25 @@ fn model_turn(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, turn: u64, text: St
         let load_wait = waited.elapsed().as_millis();
         let result = stream_reply(&app, &shared, port, &key, &messages, turn, lang, speak, &cancel);
         if let Some(vocal) = app.try_state::<vocals::Controller>() { vocals::set_paused(vocal.inner(), false); }
-        let Ok(mut runtime) = shared.lock() else { return };
+        // The model asked to act: do it, then say what happened.
+        let result = match result {
+            Ok(Some((reply, timing, true))) => {
+                let said = model_action(&reply, lang);
+                if cancel.load(Ordering::SeqCst) { return; }
+                if let Ok(mut runtime) = lock(&shared) {
+                    if speak {
+                        runtime.send_voice(json!({"command":"speak","turn":turn,"text":said,"lang":lang}));
+                        runtime.send_voice(json!({"command":"speak_end","turn":turn}));
+                    }
+                }
+                let _ = app.emit("jarvis_reply", json!({"text":said,"done":true}));
+                Ok(Some((said, timing)))
+            }
+            Ok(Some((reply, timing, false))) => Ok(Some((reply, timing))),
+            Ok(None) => Ok(None),
+            Err(error) => Err(error),
+        };
+        let Ok(mut runtime) = lock(&shared) else { return };
         match result {
             Ok(None) => {} // cancelled (barge-in or a newer turn): leave history and state alone
             Ok(Some((reply, timing))) => {
@@ -626,10 +734,61 @@ fn model_turn(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, turn: u64, text: St
             }
             Err(error) => {
                 runtime.turns.remove(&turn);
-                let _ = app.emit("jarvis_reply", json!({"text":format!("Sorry, the local model failed: {error}"),"done":true}));
+                log_line(&format!("model turn failed: {error}"));
+                // A model server that died is started again on the next question.
+                if let Some(llm) = runtime.llm.as_mut() {
+                    if llm.child.try_wait().ok().flatten().is_some() { runtime.llm = None; }
+                }
+                let text = if lang == "el" { "Συγγνώμη, κάτι πήγε στραβά με την απάντηση. Δοκίμασε ξανά." } else { "Sorry, something went wrong with that answer. Please try again." };
+                if speak {
+                    runtime.send_voice(json!({"command":"speak","turn":turn,"text":text,"lang":lang}));
+                    runtime.send_voice(json!({"command":"speak_end","turn":turn}));
+                }
+                let _ = app.emit("jarvis_reply", json!({"text":text,"done":true}));
             }
         }
+      }));
+      if outcome.is_err() {
+          if let Some(vocal) = guard_app.try_state::<vocals::Controller>() { vocals::set_paused(vocal.inner(), false); }
+          log_line("model turn panicked (details in sudo-crash.log)");
+          let _ = guard_app.emit("jarvis_reply", json!({"text":"Sorry, something went wrong with that answer. The details are in sudo-crash.log in Sudo's data folder.","done":true}));
+      }
     });
+}
+
+/// A few worked turns before the real conversation: the 4B model follows the action format and
+/// answers in short, correct Greek far more reliably when it has seen it done (otherwise it often
+/// says "I'm playing it" in Greek without asking Sudo to play anything).
+fn examples() -> Vec<Value> {
+    [
+        ("βάλε μου Αντώνη Ρέμο", r#"{"action":"play_song","query":"Αντώνης Ρέμος"}"#),
+        ("θέλω να ακούσω Μαρινέλλα", r#"{"action":"play_song","query":"Μαρινέλλα"}"#),
+        ("κατέβα λίγο πιο κάτω", r#"{"action":"scroll","direction":"down"}"#),
+        ("γράψε στο έγγραφο: τα λέμε αύριο", r#"{"action":"type_text","text":"τα λέμε αύριο"}"#),
+        ("could you press the Send button", r#"{"action":"click","target":"Send","button":"left","double":false}"#),
+        ("άδειασε τον κάδο ανακύκλωσης", "Αυτό δεν μπορώ να το κάνω ακόμα. Κάνε δεξί κλικ στον Κάδο Ανακύκλωσης και επίλεξε Άδειασμα."),
+        ("Πες μου κάτι για τη Ρόδο", "Η Ρόδος είναι το μεγαλύτερο νησί των Δωδεκανήσων και φημίζεται για τη μεσαιωνική Παλιά Πόλη της, που είναι μνημείο παγκόσμιας κληρονομιάς της UNESCO."),
+    ].into_iter().flat_map(|(user, assistant)| [json!({"role":"user","content":user}), json!({"role":"assistant","content":assistant})]).collect()
+}
+
+/// Runs an action the model asked for (a JSON object as its whole reply) and returns what to say.
+fn model_action(reply: &str, lang: &str) -> String {
+    let json = reply.find('{').and_then(|start| reply.rfind('}').map(|end| &reply[start..=end]));
+    let action = json.and_then(|text| serde_json::from_str::<Value>(text).ok()).and_then(|value| commands::Action::from_json(&value));
+    // The model never presses Delete: Shift+Delete in File Explorer deletes for good (it once chose
+    // that for "empty my recycle bin"). The user can still say "press delete" themselves.
+    let action = action.filter(|a| !matches!(a, commands::Action::PressKeys(keys) if keys.contains(&0x2E)));
+    let Some(action) = action else {
+        log_line(&format!("model action not understood: {}", reply.chars().take(300).collect::<String>()));
+        return if lang == "el" { "Συγγνώμη, δεν κατάλαβα τι να κάνω.".into() } else { "Sorry, I didn't understand what to do.".into() };
+    };
+    match commands::execute(&action, lang) {
+        Ok(said) => said,
+        Err(reason) => {
+            log_line(&format!("model action {:?} failed: {reason}", commands::describe(&action)));
+            if lang == "el" { format!("Δεν τα κατάφερα: {reason}") } else { format!("I couldn't do that: {reason}") }
+        }
+    }
 }
 
 /// Port and key once the model answers; None if it failed, Sudo AI stopped, or the turn was cancelled.
@@ -637,7 +796,7 @@ fn wait_until_loaded(shared: &Arc<Mutex<Runtime>>, cancel: &AtomicBool) -> Optio
     let deadline = Instant::now() + Duration::from_secs(300);
     while Instant::now() < deadline && !cancel.load(Ordering::SeqCst) {
         {
-            let runtime = shared.lock().ok()?;
+            let runtime = lock(&shared).ok()?;
             match runtime.llm.as_ref() {
                 Some(llm) if llm.ready => return Some((llm.port, llm.key.clone())),
                 Some(_) => {}
@@ -652,10 +811,11 @@ fn wait_until_loaded(shared: &Arc<Mutex<Runtime>>, cancel: &AtomicBool) -> Optio
 
 #[allow(clippy::too_many_arguments)]
 fn stream_reply(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, port: u16, key: &str, messages: &[Value], turn: u64,
-                lang: &str, speak: bool, cancel: &AtomicBool) -> Result<Option<(String, Vec<(&'static str, Value)>)>, String> {
+                lang: &str, speak: bool, cancel: &AtomicBool) -> Result<Option<(String, Vec<(&'static str, Value)>, bool)>, String> {
     let client = reqwest::blocking::Client::builder().connect_timeout(Duration::from_secs(2)).timeout(None::<Duration>).build().map_err(|e| e.to_string())?;
     let started = Instant::now();
-    let body = json!({"messages":messages,"stream":true,"max_tokens":400,"temperature":0.7,"top_p":0.9,"cache_prompt":true});
+    // A little cooler than before: fewer invented facts and steadier Greek, still natural.
+    let body = json!({"messages":messages,"stream":true,"max_tokens":400,"temperature":0.5,"top_p":0.9,"repeat_penalty":1.05,"cache_prompt":true});
     let response = client.post(format!("http://127.0.0.1:{port}/v1/chat/completions")).bearer_auth(key).header("Content-Type", "application/json").body(body.to_string()).send().map_err(|e| e.to_string())?;
     if !response.status().is_success() { return Err(format!("HTTP {}", response.status())); }
     let mut reply = String::new();
@@ -666,8 +826,10 @@ fn stream_reply(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, port: u16, key: &
     let say = |text: String, first_chunk: &mut Option<u128>| {
         if !speak { return; }
         first_chunk.get_or_insert(started.elapsed().as_millis());
-        if let Ok(mut runtime) = shared.lock() { runtime.send_voice(json!({"command":"speak","turn":turn,"text":text,"lang":lang})); }
+        if let Ok(mut runtime) = lock(&shared) { runtime.send_voice(json!({"command":"speak","turn":turn,"text":text,"lang":lang})); }
     };
+    // A reply that starts with "{" is an action for Sudo to run, never shown or spoken.
+    let mut action: Option<bool> = None;
     for line in BufReader::new(response).lines() {
         // Dropping the response closes the connection, which makes llama-server stop generating.
         if cancel.load(Ordering::SeqCst) { return Ok(None); }
@@ -677,17 +839,31 @@ fn stream_reply(app: &AppHandle, shared: &Arc<Mutex<Runtime>>, port: u16, key: &
         ttft.get_or_insert(started.elapsed().as_millis());
         tokens += 1;
         reply.push_str(&delta);
+        if action.is_none() {
+            let start = reply.trim_start();
+            if start.is_empty() { continue; }
+            let is_action = start.starts_with('{') || start.starts_with("```");
+            action = Some(is_action);
+            if !is_action {
+                let _ = app.emit("jarvis_reply", json!({"text":start,"done":false}));
+                for chunk in chunker.push(&reply.clone()) { say(chunk, &mut first_chunk); }
+            }
+            continue;
+        }
+        if action == Some(true) { continue; }
         let _ = app.emit("jarvis_reply", json!({"text":reply.trim_start(),"done":false}));
         for chunk in chunker.push(&delta) { say(chunk, &mut first_chunk); }
     }
     if cancel.load(Ordering::SeqCst) { return Ok(None); }
+    let timing = |first_chunk: Option<u128>| vec![
+        ("ttftMs", json!(ttft)), ("firstChunkMs", json!(first_chunk)), ("llmMs", json!(started.elapsed().as_millis())), ("tokens", json!(tokens)),
+    ];
+    if action == Some(true) { return Ok(Some((reply.trim().to_string(), timing(first_chunk), true))); }
     if let Some(rest) = chunker.finish() { say(rest, &mut first_chunk); }
-    if speak { if let Ok(mut runtime) = shared.lock() { runtime.send_voice(json!({"command":"speak_end","turn":turn})); } }
+    if speak { if let Ok(mut runtime) = lock(&shared) { runtime.send_voice(json!({"command":"speak_end","turn":turn})); } }
     let reply = reply.trim().to_string();
     let _ = app.emit("jarvis_reply", json!({"text":reply,"done":true}));
-    Ok(Some((reply, vec![
-        ("ttftMs", json!(ttft)), ("firstChunkMs", json!(first_chunk)), ("llmMs", json!(started.elapsed().as_millis())), ("tokens", json!(tokens)),
-    ])))
+    Ok(Some((reply, timing(first_chunk), false)))
 }
 
 /// Content text of one OpenAI-style SSE line, if any.
@@ -759,12 +935,12 @@ fn clean_speech(text: &str) -> Option<String> {
 pub fn init(app: &AppHandle) {
     let controller = app.state::<Controller>().inner().clone();
     let shared = controller.0.clone();
-    if let Ok(mut runtime) = shared.lock() { runtime.history = load_history(); }
+    if let Ok(mut runtime) = lock(&shared) { runtime.history = load_history(); }
     let handle = app.clone();
     let down_app = app.clone();
     app.listen("hotkey_down", move |_| {
         if !load_triggers(&data_root()).1 { return; } // the user turned the hotkey off
-        let Ok(mut runtime) = shared.lock() else { return };
+        let Ok(mut runtime) = lock(&shared) else { return };
         // The island only opens its listening view when Sudo AI really listens.
         let _ = down_app.emit("jarvis_listening", ());
         if !runtime.voice_ready() { return; }
@@ -776,7 +952,7 @@ pub fn init(app: &AppHandle) {
     let shared = controller.0.clone();
     app.listen("hotkey_up", move |_| {
         if !load_triggers(&data_root()).1 { return; }
-        let Ok(mut runtime) = shared.lock() else { return };
+        let Ok(mut runtime) = lock(&shared) else { return };
         if runtime.voice_ready() { runtime.send_voice(json!({"command":"listen_stop"})); return; }
         let message = match runtime.phase {
             "loading" => "Sudo AI is still loading. Try again in a moment.",
@@ -791,20 +967,20 @@ pub fn init(app: &AppHandle) {
     });
     let shared = controller.0.clone();
     app.listen("hotkey_cancel", move |_| {
-        if let Ok(mut runtime) = shared.lock() { runtime.send_voice(json!({"command":"listen_cancel"})); }
+        if let Ok(mut runtime) = lock(&shared) { runtime.send_voice(json!({"command":"listen_cancel"})); }
     });
     // Start with the app only if the user enabled Sudo AI earlier and it is still installed.
     let data = data_root();
     let (enabled, wake) = load_settings(&data);
     if enabled && missing(&data).is_empty() {
         let (app, shared) = (app.clone(), controller.0.clone());
-        std::thread::spawn(move || { if let Err(error) = start(&app, &shared, wake) { if let Ok(mut r) = shared.lock() { set_phase(&app, &mut r, "error", error); } } });
+        std::thread::spawn(move || { if let Err(error) = start(&app, &shared, wake) { if let Ok(mut r) = lock(&shared) { set_phase(&app, &mut r, "error", error); } } });
     }
 }
 
 pub fn shutdown(controller: &Controller, app: &AppHandle) {
     stop(app, &controller.0);
-    if let Ok(mut runtime) = controller.0.lock() {
+    if let Ok(mut runtime) = lock(&controller.0) {
         runtime.setup_cancelled = true;
         if let Some(child) = runtime.setup_child.as_mut() { kill(child); }
     }
@@ -815,7 +991,7 @@ pub fn shutdown(controller: &Controller, app: &AppHandle) {
 
 #[tauri::command]
 pub fn jarvis_status(controller: tauri::State<'_, Controller>) -> Result<Value, String> {
-    let runtime = controller.0.lock().map_err(|e| e.to_string())?;
+    let runtime = lock(&controller.0).map_err(|e| e.to_string())?;
     let data = data_root();
     let (enabled, wake) = load_settings(&data);
     Ok(json!({
@@ -836,10 +1012,10 @@ pub async fn jarvis_set_enabled(enabled: bool, wake: bool, app: AppHandle, contr
         let (was_enabled, was_wake) = load_settings(&data);
         save_settings(&data, enabled, wake)?;
         if !enabled { stop(&app, &shared); return Ok(()); }
-        let running = shared.lock().map(|r| r.voice.is_some() || r.llm.is_some()).unwrap_or(false);
+        let running = lock(&shared).map(|r| r.voice.is_some() || r.llm.is_some()).unwrap_or(false);
         if running && was_enabled && was_wake != wake {
             // The wake detector loads lazily in the voice child; switch it without a restart.
-            if let Ok(mut runtime) = shared.lock() { runtime.send_voice(json!({"command":"wake","enabled":wake})); }
+            if let Ok(mut runtime) = lock(&shared) { runtime.send_voice(json!({"command":"wake","enabled":wake})); }
             return Ok(());
         }
         start(&app, &shared, wake)
@@ -851,7 +1027,7 @@ pub async fn jarvis_set_enabled(enabled: bool, wake: bool, app: AppHandle, contr
 pub fn jarvis_listen(app: AppHandle, controller: tauri::State<'_, Controller>) -> Result<(), String> {
     if !load_triggers(&data_root()).0 { return Err("Starting Sudo AI from the orb is turned off in Settings.".into()); }
     {
-        let mut runtime = controller.0.lock().map_err(|e| e.to_string())?;
+        let mut runtime = lock(&controller.0).map_err(|e| e.to_string())?;
         if !runtime.voice_ready() { return Err("Sudo AI is still starting. Try again in a moment.".into()); }
         runtime.cancel.store(true, Ordering::SeqCst);
         runtime.send_voice(json!({"command":"listen_auto"}));
@@ -871,7 +1047,7 @@ pub async fn jarvis_set_triggers(wake: bool, orb_click: bool, hotkey: bool, app:
         let (enabled, was_wake) = load_settings(&data);
         patch_settings(&data, json!({"wake":wake,"orbClick":orb_click,"hotkey":hotkey}))?;
         if enabled && was_wake != wake {
-            if let Ok(mut runtime) = shared.lock() { runtime.send_voice(json!({"command":"wake","enabled":wake})); }
+            if let Ok(mut runtime) = lock(&shared) { runtime.send_voice(json!({"command":"wake","enabled":wake})); }
         }
         let _ = app;
         Ok(())
@@ -883,7 +1059,7 @@ pub async fn jarvis_set_triggers(wake: bool, orb_click: bool, hotkey: bool, app:
 pub fn jarvis_set_keep_loaded(keep: bool, app: AppHandle, controller: tauri::State<'_, Controller>) -> Result<(), String> {
     patch_settings(&data_root(), json!({"keepLoaded":keep}))?;
     {
-        let mut runtime = controller.0.lock().map_err(|e| e.to_string())?;
+        let mut runtime = lock(&controller.0).map_err(|e| e.to_string())?;
         runtime.keep_loaded = keep;
         runtime.last_active = Instant::now();
     }
@@ -897,7 +1073,9 @@ pub fn jarvis_ask(text: String, app: AppHandle, controller: tauri::State<'_, Con
     if text.is_empty() { return Ok(()); }
     if text.chars().count() > 4000 { return Err("That message is too long.".into()); }
     let turn = {
-        let mut runtime = controller.0.lock().map_err(|e| e.to_string())?;
+        let mut runtime = lock(&controller.0).map_err(|e| e.to_string())?;
+        // A typed question isn't a spoken conversation: no listening for a follow-up after it.
+        runtime.send_voice(json!({"command":"conversation_end"}));
         runtime.typed_turns += 1;
         TYPED_TURN_BASE + runtime.typed_turns
     };
@@ -909,22 +1087,23 @@ pub fn jarvis_ask(text: String, app: AppHandle, controller: tauri::State<'_, Con
 /// Stops the current reply and speech (the island's dismiss path).
 #[tauri::command]
 pub fn jarvis_cancel(controller: tauri::State<'_, Controller>) -> Result<(), String> {
-    let mut runtime = controller.0.lock().map_err(|e| e.to_string())?;
+    let mut runtime = lock(&controller.0).map_err(|e| e.to_string())?;
     runtime.cancel.store(true, Ordering::SeqCst);
     runtime.send_voice(json!({"command":"stop_speaking"}));
+    runtime.send_voice(json!({"command":"conversation_end"}));
     Ok(())
 }
 
 #[tauri::command]
 pub fn jarvis_clear_history(controller: tauri::State<'_, Controller>) -> Result<(), String> {
-    controller.0.lock().map_err(|e| e.to_string())?.history.clear();
+    lock(&controller.0).map_err(|e| e.to_string())?.history.clear();
     let _ = std::fs::remove_file(history_path());
     Ok(())
 }
 
 #[tauri::command]
 pub fn jarvis_setup_status(controller: tauri::State<'_, Controller>) -> Result<Value, String> {
-    let runtime = controller.0.lock().map_err(|e| e.to_string())?;
+    let runtime = lock(&controller.0).map_err(|e| e.to_string())?;
     let mut status = runtime.setup_status.clone();
     status["busy"] = json!(runtime.setup_busy);
     Ok(status)
@@ -938,7 +1117,7 @@ pub fn jarvis_setup_start(component: Option<String>, app: AppHandle, controller:
     let setup_app = app.clone();
     #[cfg(not(windows))] { let _ = (app, controller); return Err("Sudo AI setup currently supports Windows x64 only.".into()); }
     #[cfg(windows)] {
-        let mut runtime = controller.0.lock().map_err(|e| e.to_string())?;
+        let mut runtime = lock(&controller.0).map_err(|e| e.to_string())?;
         if runtime.setup_busy { return Err("Sudo AI setup is already running.".into()); }
         if !router_only && (runtime.llm.is_some() || runtime.voice.is_some()) { return Err("Turn Sudo AI off before repairing its setup.".into()); }
         runtime.setup_busy = true;
@@ -955,7 +1134,7 @@ pub fn jarvis_setup_start(component: Option<String>, app: AppHandle, controller:
                     .stdin(Stdio::null()).stdout(Stdio::piped())
                     .stderr(std::fs::File::create(data.join("jarvis-setup.log")).map_err(|e| e.to_string())?);
                 hidden(&mut command);
-                let mut runtime = shared.lock().map_err(|e| e.to_string())?;
+                let mut runtime = lock(&shared).map_err(|e| e.to_string())?;
                 if runtime.setup_cancelled { return Err("Sudo AI setup cancelled.".into()); }
                 let mut child = command.spawn().map_err(|e| e.to_string())?;
                 let stdout = child.stdout.take().ok_or("Setup did not create a status pipe.")?;
@@ -964,11 +1143,11 @@ pub fn jarvis_setup_start(component: Option<String>, app: AppHandle, controller:
                 for line in BufReader::new(stdout).lines().map_while(Result::ok) {
                     if let Ok(value) = serde_json::from_str::<Value>(&line) {
                         if value["phase"].is_string() && value["message"].is_string() {
-                            if let Ok(mut runtime) = shared.lock() { if !runtime.setup_cancelled { runtime.setup_status = value; } }
+                            if let Ok(mut runtime) = lock(&shared) { if !runtime.setup_cancelled { runtime.setup_status = value; } }
                         }
                     }
                 }
-                let mut runtime = shared.lock().map_err(|e| e.to_string())?;
+                let mut runtime = lock(&shared).map_err(|e| e.to_string())?;
                 let success = runtime.setup_child.as_mut().ok_or("Setup process disappeared.")?.wait().map_err(|e| e.to_string())?.success();
                 runtime.setup_child = None;
                 if !success && !runtime.setup_cancelled {
@@ -976,7 +1155,7 @@ pub fn jarvis_setup_start(component: Option<String>, app: AppHandle, controller:
                 }
                 Ok(())
             })();
-            if let Ok(mut runtime) = shared.lock() {
+            if let Ok(mut runtime) = lock(&shared) {
                 runtime.setup_child = None;
                 runtime.setup_busy = false;
                 if runtime.setup_cancelled { runtime.setup_status = json!({"phase":"cancelled","message":"Sudo AI setup cancelled. Finished downloads are kept for a retry."}); }
@@ -991,7 +1170,7 @@ pub fn jarvis_setup_start(component: Option<String>, app: AppHandle, controller:
                     let data = data_root();
                     let (_, wake) = load_settings(&data);
                     let started = save_settings(&data, true, wake).and_then(|_| start(&setup_app, &shared, wake));
-                    if let (Err(error), Ok(mut runtime)) = (started, shared.lock()) { set_phase(&setup_app, &mut runtime, "error", error); }
+                    if let (Err(error), Ok(mut runtime)) = (started, lock(&shared)) { set_phase(&setup_app, &mut runtime, "error", error); }
                 }
             }
         });
@@ -1002,7 +1181,7 @@ pub fn jarvis_setup_start(component: Option<String>, app: AppHandle, controller:
 
 #[tauri::command]
 pub fn jarvis_setup_cancel(controller: tauri::State<'_, Controller>) -> Result<(), String> {
-    let mut runtime = controller.0.lock().map_err(|e| e.to_string())?;
+    let mut runtime = lock(&controller.0).map_err(|e| e.to_string())?;
     if !runtime.setup_busy { return Ok(()); }
     runtime.setup_cancelled = true;
     if let Some(child) = runtime.setup_child.as_mut() { kill(child); }
@@ -1129,7 +1308,7 @@ pub async fn jarvis_set_microphone(name: Option<String>, app: AppHandle, control
         let (_, wake) = load_settings(&data);
         let name = name.filter(|n| !n.trim().is_empty());
         patch_settings(&data, json!({"microphone":name}))?;
-        let running = shared.lock().map(|r| r.voice.is_some() || r.llm.is_some()).unwrap_or(false);
+        let running = lock(&shared).map(|r| r.voice.is_some() || r.llm.is_some()).unwrap_or(false);
         if running { stop(&app, &shared); start(&app, &shared, wake)?; }
         Ok(())
     }).await.map_err(|e| e.to_string())?

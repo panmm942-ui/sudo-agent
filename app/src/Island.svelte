@@ -123,6 +123,10 @@
   const HEARD_FRESH_MS = 160;
   /** A finished reply stays this long before the island settles back to compact. */
   const IDLE_AFTER_REPLY_MS = 6000;
+  /** After Sudo stops talking (and nobody follows up), the reply stays this long. */
+  const IDLE_AFTER_SPEECH_MS = 2500;
+  /** Sudo AI is speaking its answer: the reply view never folds away mid-sentence. */
+  let sudoSpeaking = false;
   /** Fixed clock for the expanded state in goldens. */
   const FROZEN_NOW = new Date(2026, 9, 30, 9, 41);
 
@@ -181,6 +185,9 @@
   function clearScrollPins(): void { pinnedPages = { home: false, spotify: false, sudo: false }; }
   let lyricsOpen = $state(false);
   let videoMenu = $state(false);
+  // Right-click hides the extra controls on Lyrics and on the Spotify player; right-click again shows them.
+  let lyricsMinimal = $state(false);
+  let spotifyMinimal = $state(false);
   let searchOpen = $state(false);
   let customId=$state<string|null>(null);
   const activeTabs=$derived(preferences.tabs.filter(t=>!preferences.disabledTabs.includes(t.id)));
@@ -227,6 +234,8 @@
   const playerShape=$derived(preferences.spotifyLayout==='cover-card'?COVER_SHAPE:preferences.spotifyLayout==='wide'?WIDE_SHAPE:SPOTIFY_SHAPE);
   const coverExpanded=$derived(spotifyExpanded&&preferences.spotifyLayout==='cover-card');
   const spotifyCompact = $derived(resting && !compactPackage && !!track && (preferences.compactTab==='spotify'||(preferences.compactTab==='auto'&&page==='spotify')));
+  /** The orb shows on the small island while Sudo AI is on, whenever it isn't showing a song cover. */
+  const smallOrb = $derived(resting && jarvisOn && !settingsTab && !frozen && !(spotifyCompact && !!track?.artwork));
   const coverArt = $derived(track?.artwork);
   const homeArt = $derived(preferences.homeArtwork && !!track && page === "home" && (resting || machine.state === "expanded") && !settingsTab);
   // Song color, where the user chose it (Settings → Look). Settings itself keeps the default look.
@@ -367,7 +376,7 @@
     if(!source||machine.state==='expanded'||hidden)return;
     // Where each piece lands inside the small island. Read every frame from the live pill: it is
     // still springing there and may sit lower than PILL_TOP (edge avoidance, burn-in drift).
-    const miniOrb=!preferences.hoverExpand&&jarvisOn&&orbClickOn;
+    const miniOrb=smallOrb||(jarvisOn&&!(spotifyCompact&&!!track?.artwork));
     const lands=source.shape==='art'&&spotifyCompact||source.shape==='orb'&&miniOrb;
     const shape=source.shape;
     const target=()=>{
@@ -425,6 +434,9 @@
   });
 
   const MORPH_SHAPE: Record<IslandPage, MorphShape> = { home: "logo", spotify: "art", sudo: "orb" };
+  /** A running cover ↔ orb morph (plain, read by the frame loop only). */
+  let orbMorph: { t: number; into: boolean; box: { left: number; top: number; width: number; height: number } } | null = null;
+  const smoothstep = (a: number, b: number, x: number) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
 
   /**
    * Home's logo, the album art and the Sudo orb share one box, so a page change between Spotify
@@ -444,7 +456,13 @@
     const f = frame.getBoundingClientRect();
     const box = { left: f.left + artSpot.x, top: f.top + artSpot.y, width: artSpot.w, height: artSpot.h, radius: artSpot.r };
     const hide = () => [...(contentEl?.querySelectorAll<HTMLElement>('img.artwork, [data-morph="logo"]') ?? [])];
-    void morph(MORPH_SHAPE[from], MORPH_SHAPE[to], box, artwork, hide).catch(() => {});
+    const a = MORPH_SHAPE[from], b = MORPH_SHAPE[to];
+    // Cover ↔ orb: the live orb stays pinned to the cover's box and fades with the morph.
+    const hooks = a === "orb" || b === "orb" ? {
+      onprogress: (t: number) => { orbMorph = { t, into: b === "orb", box }; requestFrame(); },
+      onend: () => { orbMorph = null; requestFrame(); },
+    } : {};
+    void morph(a, b, box, artwork, hide, 520, hooks).catch(() => {});
   }
 
   type Background = Preferences["spotifyBackground"];
@@ -630,8 +648,17 @@
     if (e.type === "alarm_ring" || e.type === "hotkey_down" || e.type === "confirm_request") setHidden(false);
     clearTimeout(idleTimer);
     jump(reduce(machine, e));
-    if (e.type === "reply" && e.done && machine.state === "responding" && !frozen) {
+    if (e.type === "reply" && e.done && machine.state === "responding" && !frozen && !sudoSpeaking) {
       idleTimer = setTimeout(() => dispatch({ type: "idle_timeout" }), IDLE_AFTER_REPLY_MS);
+    }
+  }
+
+  /** jarvis.rs: Sudo started or stopped speaking an answer. */
+  export function setSpeaking(on: boolean): void {
+    sudoSpeaking = on;
+    clearTimeout(idleTimer);
+    if (!on && machine.state === "responding" && !frozen) {
+      idleTimer = setTimeout(() => dispatch({ type: "idle_timeout" }), IDLE_AFTER_SPEECH_MS);
     }
   }
 
@@ -769,7 +796,14 @@
     }
     const target = mode && el ? 1 : 0;
     const prev = orb.opacity;
-    if (frozen) orb.opacity = target;
+    if (orbMorph) {
+      // The orb disk is the cover box; its slot is 143/92 of that box, centred on it.
+      const { box, t, into } = orbMorph;
+      const size = box.width * 143 / 92;
+      orb.slot = { x: box.left + box.width / 2 - size / 2, y: box.top + box.height / 2 - size / 2, size };
+      orb.opacity = into ? smoothstep(0.2, 0.85, t) : 1 - smoothstep(0, 0.5, t);
+    }
+    else if (frozen) orb.opacity = target;
     else if (target > prev) orb.opacity = Math.min(1, prev + dt / ORB_IN_S);
     else orb.opacity = Math.max(0, prev - dt / ORB_OUT_S);
     if (frozen) orb.snap();
@@ -787,6 +821,7 @@
     }
     orb.uniforms = smoother.push(f, dt);
 
+    if (orbMorph) return true;
     if (frozen || orb.opacity === 0) return orb.opacity !== target;
     return orb.opacity !== target || live || mode === "thinking" || !smoother.settled || orb.transitioning;
   }
@@ -1088,7 +1123,8 @@
   oncontextmenu={(event) => {
     if (!desktopControls) return;
     event.preventDefault();
-    if (spotifyExpanded && !lyricsOpen) videoMenu = !videoMenu;
+    if (lyricsOpen && track) lyricsMinimal = !lyricsMinimal;
+    else if (spotifyExpanded && track?.title && !searchOpen) spotifyMinimal = !spotifyMinimal;
   }}
   onpointerenter={pointerEnter}
   onpointerleave={pointerLeave}
@@ -1114,12 +1150,12 @@
       {:else if customTab && machine.state==='expanded'}
         <div class="frame" style:width="440px" style:height="210px"><CustomTab tab={customTab} remaining={focusRemaining}/></div>
       {:else if lyricsOpen && track}
-        <div class="frame" style:width="{playerShape.w}px" style:height="{playerShape.h}px"><Lyrics {track} {preferences} onupdate={onpreferences} onclose={closeLyrics} onfullscreen={()=>showVideo('fullscreen',true)} /></div>
+        <div class="frame" style:width="{playerShape.w}px" style:height="{playerShape.h}px"><Lyrics {track} {preferences} minimal={lyricsMinimal} onupdate={onpreferences} onclose={closeLyrics} onfullscreen={()=>showVideo('fullscreen',true)} /></div>
       {:else if spotifyExpanded && !track?.title}
         <div class="frame" style:width="{playerShape.w}px" style:height="{playerShape.h}px"><SpotifyEmpty error={track?.sessionError??''} onretry={onspotifyrefresh}/></div>
       {:else if spotifyExpanded && track && onmediacontrol}
         <div class="frame" style:width="{playerShape.w}px" style:height="{playerShape.h}px">
-          <Spotify {track} marquee={preferences.spotifyMarquee} seekBar={preferences.spotifySeekBar} videoReady={!!backgroundUrl} fullscreenActive={videoMode==='fullscreen'} {videoBusy} videoError={videoViewError} onvideo={showVideo} oncontrol={onmediacontrol} layout={preferences.spotifyLayout} artworkVideo={canvasReady&&preferences.videoHideArtwork} songColor={coverColor??NEUTRAL_COVER_TINT} showRepeat={preferences.spotifyShowRepeat} showShuffle={preferences.spotifyShowShuffle} waves={preferences.waves} level={audioLevel} style={preferences.waveStyle} sensitivity={preferences.waveSensitivity} reactivity={preferences.waveReactivity} smoothness={preferences.waveSmoothness} reduceMotion={lowMotion} {pinned} onpin={togglePin} onlyrics={openLyrics} {searchOpen} onsearchchange={(open)=>searchOpen=open} />
+          <Spotify {track} minimal={spotifyMinimal} marquee={preferences.spotifyMarquee} seekBar={preferences.spotifySeekBar} videoReady={!!backgroundUrl} fullscreenActive={videoMode==='fullscreen'} {videoBusy} videoError={videoViewError} onvideo={showVideo} oncontrol={onmediacontrol} layout={preferences.spotifyLayout} artworkVideo={canvasReady&&preferences.videoHideArtwork} songColor={coverColor??NEUTRAL_COVER_TINT} showRepeat={preferences.spotifyShowRepeat} showShuffle={preferences.spotifyShowShuffle} waves={preferences.waves} level={audioLevel} style={preferences.waveStyle} sensitivity={preferences.waveSensitivity} reactivity={preferences.waveReactivity} smoothness={preferences.waveSmoothness} reduceMotion={lowMotion} {pinned} onpin={togglePin} onlyrics={openLyrics} {searchOpen} onsearchchange={(open)=>searchOpen=open} />
         </div>
       {:else if sudoExpanded}
         <div class="frame" style:width="{playerShape.w}px" style:height="{playerShape.h}px">
@@ -1130,7 +1166,7 @@
         </div>
       {:else if spotifyCompact && track}
         <div class="frame" style:width="{MINI_SHAPE.w}px" style:height="{MINI_SHAPE.h}px">
-          <CompactSpotify {track} marquee={preferences.spotifyMarquee} waves={preferences.waves} reactive={true} sensitivity={preferences.waveSensitivity} style={preferences.waveStyle} reactivity={preferences.waveReactivity} smoothness={preferences.waveSmoothness} level={audioLevel} reduceMotion={lowMotion} onclick={openExpanded} />
+          <CompactSpotify {track} orb={smallOrb} marquee={preferences.spotifyMarquee} waves={preferences.waves} reactive={true} sensitivity={preferences.waveSensitivity} style={preferences.waveStyle} reactivity={preferences.waveReactivity} smoothness={preferences.waveSmoothness} level={audioLevel} reduceMotion={lowMotion} onclick={openExpanded} />
         </div>
       {:else if desktopControls && resting}
         <div class="frame" style:width="246px" style:height="44px"><CompactHome {preferences} remaining={focusRemaining} item={upcoming?.[0]} tab={compactPackage} onclick={()=>{if(compactPackage)customId=compactPackage.id;openExpanded();}} /></div>
@@ -1160,13 +1196,13 @@
         <button type="button" role="menuitem" onclick={() => (videoMenu = false)}>Close menu</button>
       </div>
     {/if}
-    {#if desktopControls && machine.state === "expanded" && !settingsTab && settingsProps}
+    {#if desktopControls && machine.state === "expanded" && !settingsTab && settingsProps && !(lyricsOpen && lyricsMinimal) && !(spotifyExpanded && !lyricsOpen && spotifyMinimal && !searchOpen)}
       <IslandNavigation top={pill.y} clipWidth={pill.w} clipHeight={pill.h} radius={pill.r} spotify={!!track} selected={page} customId={customTab?.id} tabs={activeTabs} oncustom={id=>{closeLyrics();searchOpen=false;selection='home';customId=id;}} onselect={choosePage} onsettings={() => openSettings(page === "spotify" ? "spotify" : page === "sudo" ? "jarvis" : "home")} />
     {:else if desktopControls && resting && !spotifyCompact && !preferences.hoverExpand}
       <button type="button" class="open-island" aria-label="Expand Sudo" onclick={openExpanded}></button>
     {/if}
-    {#if resting && !preferences.hoverExpand && jarvisOn && orbClickOn && !settingsTab && !frozen}
-      <!-- The island opens only on click, so its orb can start Sudo AI without opening Home. -->
+    {#if smallOrb}
+      <!-- Sudo AI's orb on the small island whenever no song is playing; clicking it starts listening. -->
       <div class="compact-orb"><MiniOrb size={18} /></div>
     {/if}
   {/if}

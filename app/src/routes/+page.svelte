@@ -322,6 +322,7 @@
     }).then((off) => {
       if (disposed) off(); else unlistenLevels = off;
     }).catch(console.warn);
+    listen<{ speaking?: boolean }>("jarvis_speech", (event) => island?.setSpeaking(!!event.payload?.speaking)).catch(console.warn);
     listen("video:cycle-background", () => island?.cycleBackgroundSource()).then((off) => {
       if (disposed) off(); else unlistenCycle = off;
     }).catch(console.warn);

@@ -49,6 +49,14 @@ pub(crate) fn current_native_track(expected_key:&str)->Result<Track,String> {
 /// Only a strictly validated 22-character base62 track id is accepted; this is
 /// the single narrow URI launch used by in-island search when Spotify's Web API
 /// can't start playback (rate limited, not connected or no usable device).
+/// The key of the song Windows reports for Spotify right now (None without a Spotify session).
+pub(crate) fn current_key()->Option<String>{
+    #[cfg(windows)]
+    {platform::state(None).ok().flatten().map(|track|track.key)}
+    #[cfg(not(windows))]
+    {None}
+}
+
 pub(crate) fn open_track_in_app(id:&str)->Result<(),String> {
     if id.len()!=22||!id.bytes().all(|byte|byte.is_ascii_alphanumeric()){return Err("This Spotify song link is invalid. Search again.".into());}
     #[cfg(windows)]

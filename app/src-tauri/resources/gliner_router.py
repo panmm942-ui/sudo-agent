@@ -32,6 +32,13 @@ LABELS = {
     "volume up": "volume_up",
     "volume down": "volume_down",
     "mute sound": "mute",
+    "play a song": "play_song",
+    "find a song": "find_song",
+    "click on the screen": "click",
+    "close an app": "close_app",
+    "search the web": "web_search",
+    "press a key": "press_key",
+    "scroll the page": "scroll",
     "question or conversation": "chat",
 }
 
@@ -118,7 +125,10 @@ def main():
             result["ms"] = int((time.perf_counter() - t) * 1000)
             print(json.dumps(result, ensure_ascii=False), flush=True)
         except Exception as error:  # noqa: BLE001
-            print(json.dumps({"id": None, "intent": "chat", "confidence": 0.0, "error": str(error)[:300]}), flush=True)
+            request_id = None
+            with contextlib.suppress(Exception):
+                request_id = json.loads(line).get("id")
+            print(json.dumps({"id": request_id, "intent": "chat", "confidence": 0.0, "error": str(error)[:300]}), flush=True)
 
 
 if __name__ == "__main__":

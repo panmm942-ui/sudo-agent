@@ -19,8 +19,19 @@ SR = 16000
 FRAME = 512                 # Silero VAD frame at 16 kHz (32 ms)
 WAKE_FRAME = 1280           # openWakeWord frame (80 ms)
 PREROLL = int(SR * .4)      # audio kept before a press / wake so the first syllable survives
-END_SILENCE = .7            # wake mode: this much silence after speech ends the turn
+END_SILENCE = .9            # wake mode: this much silence after speech ends the turn (a short pause
+                            # to think must not cut the user off)
 NO_SPEECH_TIMEOUT = 5.0     # wake mode: give up if nothing is said after the wake word
+FOLLOW_UP_TIMEOUT = 6.0     # after Sudo answers it keeps listening this long for a follow-up, no wake word
+FOLLOW_UP_DELAY = .35       # wait for the end of Sudo's own voice (device latency, room echo) first
+WAKE_HITS = 2               # detector frames (80 ms) at or above the threshold within the last WAKE_WINDOW
+WAKE_WINDOW = 4
+WAKE_COOLDOWN = 2.0         # seconds after a detection (accepted or not) before the next one counts
+BARGE_PROB = .8             # speech probability for interrupting Sudo while it talks
+BARGE_FRAMES = 8            # ~0.26 s of the user's speech (out of the last BARGE_WINDOW frames)
+BARGE_WINDOW = 11
+BARGE_LEARN = .6            # seconds at the start of each answer used to learn how loud Sudo's echo is
+TYPED_TURN_BASE = 1 << 40   # turns typed on the island (jarvis.rs): no follow-up listening
 MAX_UTTERANCE = 29.0          # Whisper sees one 30 s window
 SPEECH_PROB = .5
 WAKE_THRESHOLD = .9         # step 1 ("Hey Sudo" detector); step 2 (tiny Whisper) removes false wakes
@@ -193,6 +204,9 @@ class WakeVerifier:
     look-alike words rarely produce that, so false wakes almost disappear and the GPU stays free."""
 
     TARGETS = ('sudo', 'σουντο', 'σουδο')
+    # How Whisper writes a real "Sudo". Only these count: a general one-letter tolerance also let
+    # "judo", "sumo", "pudo" and "sido" through, which woke Sudo when nobody called it.
+    HEARD_AS = {'sudo', 'suedo', 'sudu', 'soodo', 'soudo', 'sudoo', 'sudoh', 'sudou', 'suddo', 'sooduh', 'σουντο', 'σουδο', 'σουντου', 'σουντω', 'σουντο'}
 
     def __init__(self, folder):
         from faster_whisper import WhisperModel
@@ -216,8 +230,7 @@ class WakeVerifier:
             for prefix in ('hey', 'hei', 'he', 'hay', 'χει', 'χε', 'χαι', 'ει', 'αι'):
                 if word.startswith(prefix) and len(word) - len(prefix) >= 3:
                     candidates.append(word[len(prefix):])
-        return any(abs(len(word) - len(target)) <= 1 and _distance(word, target) <= 1
-                   for word in candidates for target in cls.TARGETS)
+        return any(word in cls.HEARD_AS for word in candidates)
 
     def __call__(self, audio):
         # English letters for both languages ("Χέι Σούντο" sounds the same); auto-detection on such
@@ -228,6 +241,62 @@ class WakeVerifier:
                                             condition_on_previous_text=False, temperature=0.0, initial_prompt='Hey Sudo.')
         text = ' '.join(s.text for s in segments).strip()
         return self.matches(text), text
+
+
+_GR_ONES = ['μηδέν', 'ένα', 'δύο', 'τρία', 'τέσσερα', 'πέντε', 'έξι', 'επτά', 'οκτώ', 'εννέα', 'δέκα',
+            'έντεκα', 'δώδεκα', 'δεκατρία', 'δεκατέσσερα', 'δεκαπέντε', 'δεκαέξι', 'δεκαεπτά', 'δεκαοκτώ', 'δεκαεννέα']
+_GR_TENS = ['', '', 'είκοσι', 'τριάντα', 'σαράντα', 'πενήντα', 'εξήντα', 'εβδομήντα', 'ογδόντα', 'ενενήντα']
+_GR_HUNDREDS = ['', 'εκατό', 'διακόσια', 'τριακόσια', 'τετρακόσια', 'πεντακόσια', 'εξακόσια', 'επτακόσια', 'οκτακόσια', 'εννιακόσια']
+
+
+def _greek_below_thousand(n):
+    words = []
+    hundreds, rest = divmod(n, 100)
+    if hundreds:
+        words.append('εκατόν' if hundreds == 1 and rest else _GR_HUNDREDS[hundreds])
+    if rest >= 20:
+        tens, ones = divmod(rest, 10)
+        words.append(_GR_TENS[tens])
+        if ones:
+            words.append(_GR_ONES[ones])
+    elif rest or not words:
+        words.append(_GR_ONES[rest])
+    return ' '.join(words)
+
+
+def greek_number(n):
+    """Neuter Greek words for 0..999 999 999 ("2917" -> "δύο χιλιάδες εννιακόσια δεκαεπτά")."""
+    if n < 1000:
+        return _greek_below_thousand(n)
+    if n < 1_000_000:
+        thousands, rest = divmod(n, 1000)
+        head = 'χίλια' if thousands == 1 else _greek_below_thousand(thousands).replace('τρία', 'τρεις').replace('τέσσερα', 'τέσσερις') + ' χιλιάδες'
+        return head + (' ' + _greek_below_thousand(rest) if rest else '')
+    millions, rest = divmod(n, 1_000_000)
+    head = 'ένα εκατομμύριο' if millions == 1 else _greek_below_thousand(millions) + ' εκατομμύρια'
+    return head + (' ' + greek_number(rest) if rest else '')
+
+
+def speakable_greek(text):
+    """Supertonic reads Greek letters well but not digits inside Greek: spell numbers out.
+    "2,917" / "2.917" (thousands), "3,5" (decimal) and "15%" are handled."""
+    import re
+
+    def number(match):
+        raw = match.group(0)
+        percent = raw.endswith('%')
+        raw = raw.rstrip('%')
+        if re.fullmatch(r'\d{1,3}([.,]\d{3})+', raw):
+            words = greek_number(int(re.sub(r'[.,]', '', raw)))
+        elif re.fullmatch(r'\d+[.,]\d+', raw):
+            whole, fraction = re.split(r'[.,]', raw)
+            words = greek_number(int(whole)) + ' κόμμα ' + ' '.join(_GR_ONES[int(d)] for d in fraction)
+        else:
+            value = int(raw)
+            words = greek_number(value) if value < 1_000_000_000 else raw
+        return words + (' τοις εκατό' if percent else '')
+
+    return re.sub(r'\d[\d.,]*\d%?|\d%?', number, text)
 
 
 def _distance(a, b):
@@ -301,13 +370,34 @@ class Speaker:
         self.ended_turns = set()
         self.eos = {}                        # turn -> perf_counter at end of speech
         self.synth = {}                      # turn -> first synthesis ms
-        self.stream = sd.OutputStream(samplerate=self.rate, channels=1, dtype='float32',
-                                      latency='low', callback=self.callback)
-        self.stream.start()
+        self.sd = sd
+        self.on_spoken = None                # Voice: listen for a follow-up after an answer
+        self.out_levels = collections.deque(maxlen=64)   # (time, rms) of what Sudo just played: echo reference
+        self.turn_started = 0.0
+        self.stream = None
+        self.open_stream()
         self.heard_block = None
         self.meter = Meter(self.rate)
         threading.Thread(target=self.worker, daemon=True).start()
         threading.Thread(target=self.levels, daemon=True).start()
+
+    def open_stream(self):
+        """(Re)opens the speaker stream on the current default output device."""
+        with contextlib.suppress(Exception):
+            if self.stream is not None:
+                self.stream.close()
+        self.stream = self.sd.OutputStream(samplerate=self.rate, channels=1, dtype='float32',
+                                           latency='low', callback=self.callback)
+        self.stream.start()
+
+    def speaking(self):
+        with self.lock:
+            return self.playing_turn is not None or any(samples is not None for _, _, samples in self.chunks)
+
+    def echo_level(self, window=.15):
+        """Loudest block Sudo played in the last `window` seconds (0 when silent)."""
+        now = time.perf_counter()
+        return max((rms for at, rms in list(self.out_levels) if now - at <= window), default=0.0)
 
     def load(self):
         """Load and warm the voice model (about 0.4 GB of RAM, CPU only)."""
@@ -360,8 +450,12 @@ class Speaker:
             start = time.perf_counter()
             try:
                 self.load()  # usually already loaded by the wake; typed questions may get here first
+                if lang == 'el':
+                    text = speakable_greek(text)
+                # The first sentence starts sooner with fewer steps; the rest use full quality.
+                steps = 5 if first else 8
                 wav, _ = self.tts.synthesize(text, voice_style=self.style, lang=lang,
-                                             total_steps=5 if first else 8, silence_duration=.12)
+                                             total_steps=steps, silence_duration=.12)
             except Exception as failure:
                 emit('error', message=f'Speech synthesis failed: {failure}')
                 continue
@@ -373,9 +467,18 @@ class Speaker:
                     self.chunks.append((generation, turn, samples))
 
     def levels(self):
-        """The orb follows Sudo AI's own voice while it speaks."""
+        """The orb follows Sudo AI's own voice while it speaks. Also reopens the speaker stream when
+        the output device went away (Bluetooth off, headphones unplugged), which used to end Sudo."""
         while True:
             time.sleep(1 / 30)
+            try:
+                if self.stream is None or not self.stream.active:
+                    time.sleep(.5)
+                    self.open_stream()
+                    print('Speaker stream reopened.', file=sys.stderr)
+            except Exception as failure:  # noqa: BLE001
+                print(f'Speaker stream: {failure!r}', file=sys.stderr)
+                time.sleep(2)
             block, self.heard_block = self.heard_block, None
             if block is not None and self.playing_turn is not None:
                 features = self.meter(block)
@@ -383,6 +486,13 @@ class Speaker:
                     emit('level', source='tts', **features)
 
     def callback(self, outdata, frames, timing, status):
+        try:
+            self._callback(outdata, frames)
+        except Exception as failure:  # noqa: BLE001 - an exception here would stop the stream for good
+            outdata.fill(0)
+            print(f'Speaker callback: {failure!r}', file=sys.stderr)
+
+    def _callback(self, outdata, frames):
         out = outdata[:, 0]
         filled = 0
         events = []
@@ -396,6 +506,7 @@ class Speaker:
                     continue
                 if turn not in self.started_turns:
                     self.started_turns.add(turn)
+                    self.turn_started = time.perf_counter()
                     events.append(('speaking', turn))
                 self.playing_turn = turn
                 count = min(frames - filled, len(samples) - self.offset)
@@ -408,6 +519,8 @@ class Speaker:
         out[filled:] = 0
         if filled:
             self.heard_block = out[:filled].copy()
+            self.out_levels.append((time.perf_counter() + self.stream.latency,
+                                    float(self.np.sqrt(self.np.mean(out[:filled] ** 2)))))
         for name, turn in events:
             # Device output latency is added so "first audio" means heard, not just queued.
             heard = time.perf_counter() + self.stream.latency
@@ -417,6 +530,8 @@ class Speaker:
                 if turn in self.eos:
                     values['eosToAudioMs'] = round((heard - self.eos[turn]) * 1000)
             emit(name, **values)
+            if name == 'spoken' and self.on_spoken is not None:
+                threading.Thread(target=self.on_spoken, args=(turn,), daemon=True).start()
 
 
 class Voice:
@@ -450,6 +565,12 @@ class Voice:
         self.loading = False
         self.sleep_after_load = False
         self.mic_meter = Meter(SR)
+        self.wake_hits = collections.deque(maxlen=WAKE_WINDOW)
+        self.wake_quiet_until = 0.0
+        self.conversation = False    # the last question came by voice: listen again after the answer
+        self.barge_hits = collections.deque(maxlen=BARGE_WINDOW)
+        self.echo_gain = 0.0         # mic level per unit of Sudo's own output level (speaker echo)
+        self.echo_turn = None
 
     # -- microphone ---------------------------------------------------------------------------
     def mic_callback(self, indata, frames, timing, status):
@@ -528,12 +649,44 @@ class Voice:
             self.finish(cancelled=True, quiet=True)
             return
         self.speaker.stop()  # barge-in
+        self.conversation = True
         self.warm()
         emit('wake', utterance=utterance)
         if held is not None:
             self.jobs.put(held)  # the question already ended while step 2 ran
         elif ended:
             emit('transcript', utterance=utterance, text='', language=None, reason='no-speech')
+
+    def follow_up(self, turn):
+        """After a spoken answer to a spoken question: listen again without the wake word."""
+        if turn >= TYPED_TURN_BASE or not self.conversation:
+            return
+        time.sleep(FOLLOW_UP_DELAY)
+        with self.lock:
+            busy = self.recording is not None
+        if busy or self.speaker.speaking() or not self.conversation:
+            return
+        emit('listening', utterance=self.begin('follow'), follow=True)
+
+    def barge_in(self, frame):
+        """While Sudo talks: does the microphone hear the user (not Sudo's own voice from the speakers)?"""
+        np = self.np
+        rms = float(np.sqrt(np.mean(frame * frame)) + 1e-9)
+        echo = self.speaker.echo_level()
+        turn = self.speaker.playing_turn
+        if turn != self.echo_turn:
+            self.echo_turn, self.echo_gain = turn, 0.0
+            self.barge_hits.clear()
+            self.vad.reset()
+        prob = self.vad(frame)
+        if time.perf_counter() - self.speaker.turn_started < BARGE_LEARN:
+            # The first moments of an answer are Sudo alone: how loud does its voice come back?
+            if echo > 1e-4:
+                self.echo_gain = max(self.echo_gain, rms / echo)
+            return False
+        expected = self.echo_gain * echo
+        self.barge_hits.append(prob >= BARGE_PROB and rms > 2.5 * expected + .004)
+        return sum(self.barge_hits) >= BARGE_FRAMES
 
     def begin(self, mode, warm=True):
         if warm:
@@ -559,7 +712,7 @@ class Voice:
             self.buffer = []
         # End of speech = when the user stopped talking: the key release for push-to-talk, the last
         # voiced frame (not the later VAD decision) for the wake word.
-        eos = time.perf_counter() - (self.silent_for if mode == 'wake' else 0.0)
+        eos = time.perf_counter() - (self.silent_for if mode in ('wake', 'follow') else 0.0)
         if cancelled:
             if not quiet:
                 emit('cancelled', utterance=utterance)
@@ -567,24 +720,53 @@ class Voice:
             # Wake step 2 has not answered yet: keep the question until it does.
             with self.lock:
                 self.held = (utterance, audio, eos) if heard else None
+        elif not heard and mode == 'follow':
+            self.conversation = False
+            emit('follow_end', utterance=utterance)
         elif not heard:
             emit('transcript', utterance=utterance, text='', language=None, reason='no-speech')
         else:
             self.jobs.put((utterance, audio, eos))
 
     def process(self):
-        np = self.np
+        """Microphone loop. One bad frame must never stop listening, so errors are logged and skipped."""
         while not self.stop_event.is_set():
             try:
                 frame = self.frames.get(timeout=.1)
             except queue.Empty:
                 continue
+            try:
+                self.process_frame(frame)
+            except Exception as failure:  # noqa: BLE001
+                print(f'Microphone frame: {failure!r}', file=sys.stderr)
+
+    def process_frame(self, frame):
+        np = self.np
+        if True:
+            if self.recording is None and self.speaker.speaking():
+                # Sudo is talking: no wake word (it would hear its own name); the user can talk over it.
+                self.wake_pending = np.zeros(0, dtype=np.int16)
+                self.wake_hits.clear()
+                self.recent.append(frame)
+                self.preroll.append(frame)
+                if self.barge_in(frame):
+                    self.barge_hits.clear()
+                    self.speaker.stop()
+                    self.conversation = True
+                    utterance = self.begin('wake')
+                    emit('barge', utterance=utterance)
+                return
             if self.wake_enabled and self.recording is None and self.wake is not None:
                 self.wake_pending = np.concatenate([self.wake_pending, (frame * 32767).astype(np.int16)])
                 while len(self.wake_pending) >= WAKE_FRAME:
                     chunk, self.wake_pending = self.wake_pending[:WAKE_FRAME], self.wake_pending[WAKE_FRAME:]
                     scores = self.wake.predict(chunk)
-                    if max(scores.values(), default=0) >= WAKE_THRESHOLD:
+                    self.wake_hits.append(max(scores.values(), default=0) >= WAKE_THRESHOLD)
+                    # Several frames close together must agree (one loud frame of TV or music no longer
+                    # wakes Sudo), and never again within a couple of seconds of the last detection.
+                    if sum(self.wake_hits) >= WAKE_HITS and time.perf_counter() >= self.wake_quiet_until and self.recent:
+                        self.wake_hits.clear()
+                        self.wake_quiet_until = time.perf_counter() + WAKE_COOLDOWN
                         self.wake.reset()
                         self.wake_pending = np.zeros(0, dtype=np.int16)
                         audio = np.concatenate(list(self.recent))[-int(VERIFY_SECONDS * SR):]
@@ -599,7 +781,7 @@ class Voice:
                 mode = self.recording
                 if mode is None:
                     self.preroll.append(frame)
-                    continue
+                    return
                 self.buffer.append(frame)
             features = self.mic_meter(frame)
             if features:
@@ -611,8 +793,9 @@ class Voice:
                 self.silent_for = 0.0
             else:
                 self.silent_for += FRAME / SR
-            if mode == 'wake' and ((self.heard_speech and self.silent_for >= END_SILENCE)
-                                   or (not self.heard_speech and elapsed >= NO_SPEECH_TIMEOUT)):
+            timeout = FOLLOW_UP_TIMEOUT if mode == 'follow' else NO_SPEECH_TIMEOUT
+            if mode in ('wake', 'follow') and ((self.heard_speech and self.silent_for >= END_SILENCE)
+                                               or (not self.heard_speech and elapsed >= timeout)):
                 self.finish()
             elif elapsed >= MAX_UTTERANCE:
                 self.finish()
@@ -651,10 +834,18 @@ class Voice:
                         continue  # still loading; the app only sends audio commands once ready
                     if name == 'listen_start':
                         self.speaker.stop()
+                        self.conversation = True
                         emit('listening', utterance=self.begin('ptt'))
                     elif name == 'listen_auto':  # orb click: VAD decides when the question ends
                         self.speaker.stop()
+                        self.conversation = True
                         emit('listening', utterance=self.begin('wake'))
+                    elif name == 'conversation_end':  # a typed question, or the user dismissed Sudo
+                        self.conversation = False
+                        with self.lock:
+                            following = self.recording == 'follow'
+                        if following:
+                            self.finish(cancelled=True, quiet=True)
                     elif name == 'listen_stop':
                         self.finish()
                     elif name == 'listen_cancel':
@@ -692,6 +883,7 @@ class Voice:
         if self.wake_enabled:
             self.load_wake()
         self.speaker = speaker
+        speaker.on_spoken = self.follow_up
         if self.args.keep:
             self.warm()  # "Keep AI loaded": ready before the first question
         # JARVIS_INPUT_DEVICE: the microphone chosen in Settings (full name); unset = Windows default.

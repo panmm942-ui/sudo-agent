@@ -11,7 +11,7 @@
   import { romanize, targetLanguage, translateLine } from "../island/lyricLanguage";
   import type { Preferences } from "../island/preferences";
   import type { SpotifyTrack } from "../island/spotify";
-  let { track, preferences, onupdate, onclose, onfullscreen, fullscreen=false }: { track: SpotifyTrack; preferences: Preferences; onupdate?: (patch: Partial<Preferences>) => void; onclose: () => void; onfullscreen?:()=>void; fullscreen?:boolean } = $props();
+  let { track, preferences, onupdate, onclose, onfullscreen, fullscreen=false, minimal=false }: { track: SpotifyTrack; preferences: Preferences; onupdate?: (patch: Partial<Preferences>) => void; onclose: () => void; onfullscreen?:()=>void; fullscreen?:boolean; minimal?:boolean } = $props();
   let result = $state.raw<LyricsResult | null>(null);
   let error = $state("");
   let retry = $state(0);
@@ -131,7 +131,7 @@
   });
 </script>
 
-<section class="lyrics" class:fullscreen class:balanced={preferences.lyricLayout==='balanced'} class:focus={preferences.lyricLayout==='focus'} class:has-footer={!!plainText||!!languageError} class:reduced aria-label="Song lyrics" style:--lyric-font={fontFamily} style:--lyric-flow-ms={`${flowDuration}ms`} style:--lyric-origin={preferences.lyricAlign==='center'?'center':preferences.lyricAlign==='right'?'right center':'left center'} style:--lyric-align={preferences.lyricAlign} style:--lyric-weight={preferences.lyricWeight} style:--lyric-leading={preferences.lyricSpacing==='airy'?1.25:preferences.lyricSpacing==='compact'?1.08:1.16} style:--lyric-gap={preferences.lyricSpacing==='airy'?'9px':preferences.lyricSpacing==='compact'?'3px':'5px'} style:--lyric-prev-opacity={preferences.lyricContext==='clear'?'.75':preferences.lyricContext==='soft'?'.48':'.32'} style:--lyric-next-opacity={preferences.lyricContext==='clear'?'.85':preferences.lyricContext==='soft'?'.68':'.56'}>
+<section class="lyrics" class:fullscreen class:minimal class:balanced={preferences.lyricLayout==='balanced'} class:focus={preferences.lyricLayout==='focus'} class:has-footer={!!plainText||!!languageError} class:reduced aria-label="Song lyrics" style:--lyric-font={fontFamily} style:--lyric-flow-ms={`${flowDuration}ms`} style:--lyric-origin={preferences.lyricAlign==='center'?'center':preferences.lyricAlign==='right'?'right center':'left center'} style:--lyric-align={preferences.lyricAlign} style:--lyric-weight={preferences.lyricWeight} style:--lyric-leading={preferences.lyricSpacing==='airy'?1.25:preferences.lyricSpacing==='compact'?1.08:1.16} style:--lyric-gap={preferences.lyricSpacing==='airy'?'9px':preferences.lyricSpacing==='compact'?'3px':'5px'} style:--lyric-prev-opacity={preferences.lyricContext==='clear'?'.75':preferences.lyricContext==='soft'?'.48':'.32'} style:--lyric-next-opacity={preferences.lyricContext==='clear'?'.85':preferences.lyricContext==='soft'?'.68':'.56'}>
   <header>
     {#if !fullscreen}<button type="button" class="back" aria-label="Close lyrics" onclick={onclose}>‹</button>{/if}
     <div class="options" aria-label="Lyrics display options">
@@ -161,7 +161,7 @@
       {/each}
     </div>
   {/if}
-  {#if plainText||languageError}<footer>{languageError||'Unsynced lyrics'}{#if plainText&&!preferences.spotifyBridge}<button type="button" class="timed" onclick={()=>onupdate?.({spotifyBridge:true})}>Get timed lyrics from Spotify</button>{/if}{#if plainText}<span class="pages"><button type="button" aria-label="Previous lyric page" disabled={plainPage===0} onclick={()=>plainPage--}>‹</button><span>{plainPage+1}/{pageCount}</span><button type="button" aria-label="Next lyric page" disabled={plainPage+1>=pageCount} onclick={()=>plainPage++}>›</button></span>{/if}</footer>{/if}
+  {#if plainText||languageError}<footer>{languageError||'Unsynced lyrics'}{#if plainText&&!preferences.spotifyBridge&&!minimal}<button type="button" class="timed" onclick={()=>onupdate?.({spotifyBridge:true})}>Get timed lyrics from Spotify</button>{/if}{#if plainText}<span class="pages"><button type="button" aria-label="Previous lyric page" disabled={plainPage===0} onclick={()=>plainPage--}>‹</button><span>{plainPage+1}/{pageCount}</span><button type="button" aria-label="Next lyric page" disabled={plainPage+1>=pageCount} onclick={()=>plainPage++}>›</button></span>{/if}</footer>{/if}
 </section>
 
 <style>
@@ -171,6 +171,10 @@
   .lyrics { height: 100%; padding: 12px 62px 10px 24px; display: grid; grid-template-rows: 24px minmax(0, 1fr); gap: 4px; }
   .lyrics.has-footer {grid-template-rows:24px minmax(0,1fr) 20px;}
   header { display: flex; align-items: center; gap: 8px; }
+  /* Right-click: lyrics only. The header buttons hide and the lines use the width the tab rail had. */
+  .lyrics.minimal{padding-right:24px;grid-template-rows:0 minmax(0,1fr);gap:0}
+  .lyrics.minimal.has-footer{grid-template-rows:0 minmax(0,1fr) 20px}
+  .minimal header{visibility:hidden;overflow:hidden}
   button { color: inherit; background: transparent; border: 0; cursor: pointer; font: var(--type-caption); border-radius: 8px; }
   .back { width: 24px; height: 24px; font-size: 25px; line-height: 22px; padding: 0; }
   .options { display: flex; gap: 4px; }
