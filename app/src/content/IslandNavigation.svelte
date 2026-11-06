@@ -38,6 +38,11 @@
 
 <style>
   .chrome { position: fixed; left: 50vw; top: 10px; width: 440px; height: 210px; transform: translateX(-50%); pointer-events: none; }
+  /* Arrive with the page's own crossfade (Settings or the small island fading out first) instead of
+     popping in on top of the content that is still leaving. */
+  .chrome { animation: chrome-in 220ms cubic-bezier(.2,.8,.2,1) 80ms both; }
+  @keyframes chrome-in { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .chrome { animation-duration: 120ms; animation-delay: 0ms; } }
   .icon { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--radius-pill); color: var(--text-primary); background: transparent; cursor: pointer; pointer-events: auto; }
   .icon svg { width: 18px; height: 18px; }
   .spotify-mark { display: block; width: 21px; height: 21px; }

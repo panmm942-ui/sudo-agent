@@ -365,15 +365,19 @@
     }
     collapse();
     if(!source||machine.state==='expanded'||hidden)return;
-    // The small island's box (it springs there now) and the pieces inside it.
-    const left=innerWidth/2-MINI_SHAPE.w/2, top=PILL_TOP, pillBox={left,top,width:MINI_SHAPE.w,height:MINI_SHAPE.h,radius:MINI_SHAPE.r};
+    // Where each piece lands inside the small island. Read every frame from the live pill: it is
+    // still springing there and may sit lower than PILL_TOP (edge avoidance, burn-in drift).
     const miniOrb=!preferences.hoverExpand&&jarvisOn&&orbClickOn;
-    const target=source.shape==='art'&&spotifyCompact?{left:left+7,top:top+6,width:32,height:32,radius:10}
-      :source.shape==='orb'&&miniOrb?{left:left+MINI_SHAPE.w-5-18,top:top+(MINI_SHAPE.h-18)/2,width:18,height:18,radius:9}
-      :source.shape==='art'?{left:innerWidth/2-16,top:top+6,width:32,height:32,radius:10}
-      :pillBox;
     const lands=source.shape==='art'&&spotifyCompact||source.shape==='orb'&&miniOrb;
-    void toCompact(source.shape,source.el,track?.artwork??null,artSpot.r,target,!lands).catch(()=>{});
+    const shape=source.shape;
+    const target=()=>{
+      const left=pill.x+pill.w/2-MINI_SHAPE.w/2, top=pill.y;
+      if(shape==='art'&&lands)return {left:left+7,top:top+(MINI_SHAPE.h-32)/2,width:32,height:32,radius:10};
+      if(shape==='orb'&&lands)return {left:left+MINI_SHAPE.w-5-18,top:top+(MINI_SHAPE.h-18)/2,width:18,height:18,radius:9};
+      if(shape==='art')return {left:pill.x+pill.w/2-16,top:top+(MINI_SHAPE.h-32)/2,width:32,height:32,radius:10};
+      return {left,top,width:MINI_SHAPE.w,height:MINI_SHAPE.h,radius:MINI_SHAPE.r};
+    };
+    void toCompact(shape,source.el,track?.artwork??null,artSpot.r,target,!lands).catch(()=>{});
   }
 
   /** Native hit-testing can lose the WebView's DOM leave when click-through takes over. */

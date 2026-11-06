@@ -103,55 +103,76 @@ const ORB_FACE =
 
 export type Rect = { left: number; top: number; width: number; height: number; radius: number };
 
+/** CSS cubic-bezier(x1,y1,x2,y2) as a function of progress 0..1. */
+export function cubicBezier(x1: number, y1: number, x2: number, y2: number): (t: number) => number {
+  const at = (a: number, b: number, t: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
+  return (t) => {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    let lo = 0, hi = 1, u = t;
+    for (let i = 0; i < 24; i++) { u = (lo + hi) / 2; if (at(x1, x2, u) < t) lo = u; else hi = u; }
+    return at(y1, y2, u);
+  };
+}
+const landing = cubicBezier(0.2, 0.8, 0.2, 1);
+const mix = (a: number, b: number, k: number) => a + (b - a) * k;
+
 /**
  * Collapse, timed with the island's own shrink (fast start, soft landing):
  * - the song cover flies into the small island's cover thumbnail and lands exactly on it;
  * - the capsule logo becomes the small island's outline, then dissolves into its glass;
  * - the orb drops into the small island's orb (or into the pill, dissolving, when it has none).
- * `source` is the real element (hidden meanwhile); `target` is where it lands, in viewport px.
+ * `source` is the real element (hidden meanwhile). `target` is read every frame: the island is
+ * still springing (and may be pushed down by edge avoidance or burn-in drift), so the piece
+ * follows where its landing spot is now instead of flying to a guess and hanging there.
  */
 export function toCompact(shape: MorphShape, source: HTMLElement, artwork: string | null, radius: number,
-  target: Rect, dissolve: boolean, duration = 340): Promise<void> {
+  target: () => Rect, dissolve: boolean, duration = 340): Promise<void> {
   finishMorph();
   const box = source.getBoundingClientRect();
   if (box.width < 4) return Promise.resolve();
   const g = geometry(shape, { left: box.left, top: box.top, width: box.width, height: box.height, radius });
   const ring = Math.max(1.5, box.width * LOGO.stroke);
+  const from = { left: box.left + g.x, top: box.top + g.y, width: g.w, height: g.h, radius: g.r };
   const el = document.createElement("div");
-  el.style.cssText = `position:fixed;left:${box.left + g.x}px;top:${box.top + g.y}px;width:${g.w}px;height:${g.h}px;border-radius:${g.r}px;` +
-    "z-index:50;pointer-events:none;overflow:hidden;will-change:left,top,width,height,border-radius,opacity;";
+  el.style.cssText = `position:fixed;left:0;top:0;width:${from.width}px;height:${from.height}px;border-radius:${from.radius}px;` +
+    `transform:translate(${from.left}px,${from.top}px);z-index:50;pointer-events:none;overflow:hidden;will-change:transform,width,height,opacity;`;
   if (shape === "art" && artwork) el.style.background = `center / cover no-repeat url("${artwork.replace(/"/g, "%22")}")`;
   else if (shape === "orb") el.style.background = ORB_FACE;
   else el.style.boxShadow = `inset 0 0 0 ${ring}px #d9dde4`;
   document.body.append(el);
   source.style.opacity = "0";
 
-  const at = (left: number, top: number, w: number, h: number, r: number) =>
-    ({ left: `${left}px`, top: `${top}px`, width: `${w}px`, height: `${h}px`, borderRadius: `${r}px` });
-  const from = at(box.left + g.x, box.top + g.y, g.w, g.h, g.r);
-  const to = at(target.left, target.top, target.width, target.height, target.radius);
-  const keyframes: Keyframe[] = dissolve
-    ? [{ ...from, opacity: 1 }, { ...to, opacity: 0.9, offset: 0.78 }, { ...to, opacity: 0 }]
-    : [{ ...from, opacity: 1 }, { ...to, opacity: 1 }];
-  if (shape === "logo") {
-    // The ring thins to the island's own hairline as it reaches the pill.
-    keyframes[0].boxShadow = `inset 0 0 0 ${ring}px #d9dde4`;
-    keyframes[keyframes.length - 1].boxShadow = "inset 0 0 0 1px #d9dde400";
-  }
-  const animation = el.animate(keyframes, { duration, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" });
   let done = false;
   let resolve!: () => void;
   const finished = new Promise<void>((r) => (resolve = r));
+  const start = performance.now();
+  let raf = 0;
+  const paint = (now: number) => {
+    const t = Math.min(1, (now - start) / duration);
+    const k = landing(t);
+    const to = target();
+    const w = mix(from.width, to.width, k), h = mix(from.height, to.height, k);
+    el.style.transform = `translate(${mix(from.left, to.left, k)}px,${mix(from.top, to.top, k)}px)`;
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+    el.style.borderRadius = `${mix(from.radius, to.radius, k)}px`;
+    // Dissolving pieces hold until ~78% of the way, then fade into the glass.
+    el.style.opacity = dissolve ? String(t < 0.78 ? 1 - 0.1 * (t / 0.78) : 0.9 * (1 - (t - 0.78) / 0.22)) : "1";
+    if (shape === "logo") el.style.boxShadow = `inset 0 0 0 ${mix(ring, 1, k)}px rgba(217,221,228,${1 - k})`;
+    if (t >= 1) { finish(); return; }
+    raf = requestAnimationFrame(paint);
+  };
   const finish = () => {
     if (done) return;
     done = true;
-    animation.cancel();
+    cancelAnimationFrame(raf);
     el.remove();
     source.style.opacity = "";
     if (active?.finish === finish) active = null;
     resolve();
   };
   active = { finish };
-  void animation.finished.then(finish, finish);
+  raf = requestAnimationFrame(paint);
   return finished;
 }

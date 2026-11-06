@@ -13,6 +13,16 @@ Each release on GitHub carries the installer, the portable executable and `SHA25
 earlier builds whose releases are no longer published. Before 1.0.0 the public surface (preferences format, extension package format)
 may still change in a MINOR release; such changes are called out explicitly.
 
+## [1.1.1] - 2026-11-06
+
+### Fixed
+- Collapsing the island no longer leaves the song cover floating in mid-air. The cover used to fly
+  to a fixed spot near the top of the screen while the small island landed lower (edge avoidance,
+  burn-in drift) or was still springing into place; it now follows the small island every frame and
+  lands exactly on its thumbnail.
+- Closing Settings no longer flashes the page buttons on top of the Settings panel; they fade in
+  with the page.
+
 ## [1.1.0] - 2026-11-06
 
 ### Added
@@ -208,4 +218,5 @@ may still change in a MINOR release; such changes are called out explicitly.
 - First packaged Windows release: liquid-glass Home and Spotify panels, layouts, real audio spectrum,
   lyrics reader, reminders and alarms, extensions.
 
+[1.1.1]: https://github.com/panmm942-ui/sudo-agent/releases/tag/v1.1.1
 [1.1.0]: https://github.com/panmm942-ui/sudo-agent/releases/tag/v1.1.0
