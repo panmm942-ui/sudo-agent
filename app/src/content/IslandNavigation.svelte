@@ -2,8 +2,10 @@
   import spotifyIcon from "../assets/spotify-icon.svg";
   import type {TabPackage} from '../island/extensions';
   import ExtensionIcon from './ExtensionIcon.svelte';
-  let { spotify, selected, onselect, onsettings,tabs=[],oncustom,customId,top=10,clipWidth=440,clipHeight=210,radius=48 }: {
+  let { hideTools=false, spotify, selected, onselect, onsettings,tabs=[],oncustom,customId,top=10,clipWidth=440,clipHeight=210,radius=48 }: {
     top?:number;clipWidth?:number;clipHeight?:number;radius?:number;
+    /** Lyrics use the whole left side: the Tools button steps away there. */
+    hideTools?:boolean;
     customId?:string;
     tabs?:TabPackage[];oncustom?:(id:string)=>void;
     spotify: boolean;
@@ -30,10 +32,10 @@
       <button type="button" class="icon" aria-label="Sudo AI" aria-pressed={selected === "sudo"} onclick={() => onselect("sudo")}>
         <span class="sudo-mark" aria-hidden="true"></span>
       </button>
-      <button type="button" class="icon" aria-label="Tools" aria-pressed={selected === "tools"} onclick={() => onselect("tools")}>
-        <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="3.5"/></svg>
-      </button>
     </nav>
+  {#if !hideTools}<button type="button" class="icon tools" aria-label="Tools" aria-pressed={selected === "tools"} onclick={() => onselect("tools")}>
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="3.5"/></svg>
+  </button>{/if}
   {#if selected==='home'&&tabs.length}<nav class="addons" aria-label="Your extensions" onwheel={event=>event.stopPropagation()}>
     {#each tabs as tab (tab.id)}<button type="button" class="icon" aria-label={'Open '+tab.name} aria-pressed={customId===tab.id} onclick={()=>oncustom?.(tab.id)}><ExtensionIcon name={tab.icon}/></button>{/each}
   </nav>{/if}
@@ -56,6 +58,9 @@
   .icon[aria-pressed="false"] svg { opacity: 0.76; }
   .settings { position: absolute; top: 14px; right: 12px; background: transparent; }
   .settings:hover { background: transparent; }
-  .rail { position: absolute; top: 50%; right: 12px; display: grid; gap: var(--space-1); transform: translateY(-50%);max-height:150px;overflow-y:auto;scrollbar-width:none; }
-  .addons{position:absolute;left:20px;top:50%;transform:translateY(-50%);display:grid;gap:4px;max-height:128px;overflow-y:auto;scrollbar-width:none;pointer-events:auto;}
+  .rail { position: absolute; top: 50%; right: 12px; display: grid; gap: var(--space-1); transform: translateY(-50%);max-height:122px;overflow-y:auto;scrollbar-width:none; }
+  /* Tools sits alone on the left, mirroring the page buttons on the right. */
+  .tools{position:absolute;left:12px;top:50%;transform:translateY(-50%);}
+  .tools[aria-pressed="false"] svg{opacity:.76;}
+  .addons{position:absolute;left:12px;top:calc(50% + 22px);display:grid;gap:4px;max-height:128px;overflow-y:auto;scrollbar-width:none;pointer-events:auto;}
 </style>

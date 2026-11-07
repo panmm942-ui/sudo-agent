@@ -1273,7 +1273,7 @@
       </div>
     {/if}
     {#if desktopControls && machine.state === "expanded" && !settingsTab && settingsProps && !(lyricsOpen && lyricsMinimal) && !(spotifyExpanded && !lyricsOpen && spotifyMinimal && !searchOpen)}
-      <IslandNavigation top={pill.y} clipWidth={pill.w} clipHeight={pill.h} radius={pill.r} spotify={!!track} selected={page} customId={customTab?.id} tabs={activeTabs} oncustom={id=>{closeLyrics();searchOpen=false;selection='home';customId=id;}} onselect={choosePage} onsettings={() => openSettings(page === "spotify" ? "spotify" : page === "sudo" ? "jarvis" : page === "tools" ? "tools" : "home")} />
+      <IslandNavigation hideTools={lyricsOpen} top={pill.y} clipWidth={pill.w} clipHeight={pill.h} radius={pill.r} spotify={!!track} selected={page} customId={customTab?.id} tabs={activeTabs} oncustom={id=>{closeLyrics();searchOpen=false;selection='home';customId=id;}} onselect={choosePage} onsettings={() => openSettings(page === "spotify" ? "spotify" : page === "sudo" ? "jarvis" : page === "tools" ? "tools" : "home")} />
     {:else if desktopControls && resting && !spotifyCompact && !preferences.hoverExpand}
       <button type="button" class="open-island" aria-label="Expand Sudo" onclick={openExpanded}></button>
     {/if}
