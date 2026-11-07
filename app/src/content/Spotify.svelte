@@ -133,7 +133,7 @@
 <section class="player" class:minimal={minimal&&!searchOpen} class:searching={searchOpen} class:motion-background={artworkVideo&&!searchOpen} class:artwork-left={layout === "artwork-left"} class:cover-card={layout==='cover-card'} class:wide={layout==='wide'} class:with-spectrum={layout==='wide'&&waves&&!searchOpen} class:has-options={hasOptions} class:with-seek={seekBar&&layout!=='wide'} style:--song-rgb={songRgb} aria-label={searchOpen?'Spotify search':'Spotify now playing'}>
   <!-- Click anywhere that isn't a control (or the cover) to keep Spotify open, like Home. -->
   {#if onpin&&!searchOpen}<button type="button" class="pin-surface" aria-label={pinned?'Unpin Spotify':'Keep Spotify open'} aria-pressed={pinned} onclick={onpin}></button>{/if}
-  {#if !minimal}<button type="button" class="search-toggle" bind:this={searchToggle} aria-label={searchOpen?'Close song search':'Search Spotify'} aria-expanded={searchOpen} onclick={()=>onsearchchange?.(!searchOpen)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>{/if}
+  <button type="button" class="search-toggle" bind:this={searchToggle} aria-label={searchOpen?'Close song search':'Search Spotify'} aria-expanded={searchOpen} onclick={()=>onsearchchange?.(!searchOpen)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
   {#if searchOpen}
     <form bind:this={searchForm} class="search-form" aria-label="Song search" onsubmit={search}>
       <div class="search-header"><label class="search-source" for="spotify-search-input">Search Spotify</label><button type="button" class="search-back" aria-label="Back to player" onclick={()=>closeSearch(true)}>Back</button></div>
@@ -157,7 +157,7 @@
   {/if}
   {#if layout==='wide'}<img class="cover-brand" src={spotifyIcon} alt="" width="16" height="16" aria-hidden="true" />{/if}
   </button>
-  {#if layout==='wide'&&waves&&!minimal}
+  {#if layout==='wide'&&waves}
     <div class="player-spectrum"><PlayerSpectrum playing={track.playing} {waves} {level} {sensitivity} {style} {reactivity} {smoothness} {reduceMotion} /></div>
   {/if}
   <div class="details" aria-live="polite">
@@ -169,7 +169,7 @@
       <p class="artist"><Marquee text={track.artist || "Spotify"} enabled={marquee} /></p>
     {/if}
   </div>
-  {#if showTimeline&&!minimal}
+  {#if showTimeline}
     <div class="timeline" class:seekable={seekBar} aria-label="Track timeline">
       <span class="timestamp">{hasTimeline ? timestamp(position) : '–:––'}</span>
       {#if seekBar}
@@ -184,7 +184,7 @@
     </div>
   {/if}
   <div class="transport" aria-label="Playback controls" aria-busy={busy}>
-    {#if showShuffle||minimal}
+    {#if showShuffle}
       <button type="button" class="option-btn shuffle" class:enabled={track.shuffle===true} aria-label={track.shuffle==null?'Shuffle unavailable':track.shuffle?'Turn shuffle off':'Turn shuffle on'} aria-pressed={track.shuffle==null?undefined:track.shuffle} aria-disabled={isSpotifyActionPending('shuffle', pending)} disabled={!track.canShuffle || track.shuffle==null} onclick={()=>control('shuffle')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h2.5c4.5 0 8.5 12 13 12H21M17 14l4 4-4 4M3 18h2.5c1.7 0 3.5-1.8 5.2-4.1M13.3 10.1C15 7.8 16.8 6 18.5 6H21M17 2l4 4-4 4"/></svg>
       </button>
@@ -198,7 +198,7 @@
     <button type="button" class="pill-btn" aria-label="Next track" aria-disabled={isSpotifyActionPending('next', pending)} disabled={!track.canNext} onclick={() => control("next")}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d={layout==='wide'?"m2 5 10 7-10 7V5Zm10 0 10 7-10 7V5Z":"m6 5 10 7-10 7zM17 5h2v14h-2z"} /></svg>
     </button>
-    {#if showRepeat||minimal}
+    {#if showRepeat}
       <button type="button" class="option-btn repeat" class:enabled={track.repeatMode==='context'||track.repeatMode==='track'} aria-label={repeatLabel} aria-pressed={track.repeatMode==null?undefined:track.repeatMode!=='off'} aria-disabled={isSpotifyActionPending('repeat', pending)} disabled={!track.canRepeat || track.repeatMode==null} onclick={()=>control('repeat')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4M3 10V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 14v1a3 3 0 0 1-3 3H3"/></svg>
         {#if track.repeatMode==='track'}<span class="repeat-one" aria-hidden="true">1</span>{/if}
@@ -207,12 +207,12 @@
 
   </div>
   {#if actionStatus}<p class="action-status" role="status">{actionStatus}</p>{/if}
-  {#if onvideo&&!minimal}
+  {#if onvideo}
     <div class="video-actions" aria-label="Video views">
       <button type="button" aria-label={fullscreenActive?'Close fullscreen now playing':'Fullscreen now playing'} aria-pressed={fullscreenActive} disabled={videoBusy} onclick={()=>onvideo?.('fullscreen')}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
     </div>
   {/if}
-  {#if onlyrics&&!minimal}
+  {#if onlyrics}
     <button type="button" class="lyrics-toggle" aria-label="Show lyrics" onclick={onlyrics}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 6.8a4 4 0 1 1 5.7 5.7l-2.1 2.1-5.7-5.7zM10.4 9.9l-6.3 7.4a1.4 1.4 0 0 0 .1 1.9l.6.6a1.4 1.4 0 0 0 1.9.1l7.4-6.3"/></svg>
     </button>
@@ -373,13 +373,9 @@
   .artwork-left:not(.has-options){padding-top:18px;padding-bottom:60px;grid-template-rows:1fr;}
   .artwork-left:not(.has-options) .artwork-button{grid-row:1;}
   .artwork-left:not(.has-options) .details{align-self:center;}
-  /* Right-click: cover, song, artist, Play/Pause, Shuffle and Repeat only. */
-  .player.minimal .transport > :is([aria-label="Previous track"],[aria-label="Next track"]) {display:none;}
-  .player.minimal .transport {grid-template-columns:28px 46px 28px !important;}
-  .player.minimal .transport > .toggle {grid-column:2;}
-  .player.minimal .transport > .repeat {grid-column:3;}
-  .player.minimal.wide .details {right:24px;}
-  .player.minimal:not(.wide):not(.cover-card):not(.artwork-left) {padding-left:24px;padding-right:24px;}
+  /* Right-click: everything but the cover, song, artist, song bar and playback buttons hides in
+     place (keeping its space), so nothing that stays moves. */
+  .player.minimal :is(.search-toggle,.player-spectrum,.video-actions,.lyrics-toggle) {visibility:hidden;pointer-events:none;}
   .player.searching {display:block;padding:0;}
   .player.searching::before {display:none;}
   .player.searching .search-toggle {left:22px;right:auto;top:18px;z-index:1;background:transparent;backdrop-filter:none;}

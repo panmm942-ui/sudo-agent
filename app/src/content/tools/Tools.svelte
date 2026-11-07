@@ -50,7 +50,7 @@
 </section>
 
 <style>
-  .tools { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; padding: 14px 64px 12px 20px; }
+  .tools { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; padding: 14px 64px 12px 56px; }
   .tabs { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .tabs button { position: relative; flex: none; height: 24px; padding: 0 8px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--text-secondary); font: 600 11.5px/1 var(--font-sans); cursor: pointer; }
   .tabs button:hover { color: var(--text-primary); background: var(--surface-control); }
