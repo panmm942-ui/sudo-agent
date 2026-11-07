@@ -32,7 +32,9 @@ describe('three pages: Home, Spotify, Sudo',()=>{
     const w=createWheelNavigation();
     expect(w.handle(100,0,0,'home',true)).toBe('spotify');
     expect(w.handle(100,0,10,'spotify',true)).toBe('sudo');
-    expect(w.handle(100,0,20,'sudo',true)).toBeNull();
+    expect(w.handle(100,0,20,'sudo',true)).toBe('tools');
+    expect(w.handle(100,0,25,'tools',true)).toBeNull();
+    expect(w.handle(-100,0,27,'tools',true)).toBe('sudo');
     expect(w.handle(-100,0,30,'sudo',true)).toBe('spotify');
     expect(w.handle(-100,0,40,'spotify',true)).toBe('home');
   });

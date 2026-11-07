@@ -109,7 +109,7 @@ Sudo opens once per Windows session, including when an installed and portable co
 - **Real audio spectrum:** seven frequency bands from Spotify's actual process audio. Choose Classic, Spectrum or Fine bars, then tune sensitivity, smoothness and reactivity.
 - **Four player layouts:** keep the original centered player, move artwork left, use the wide timeline layout or choose the large cover card. Colors come from the song artwork, with a neutral fallback.
 - **Search inside the island:** the search icon replaces the player with Spotify catalogue results. Choose a song to request playback on the verified active Spotify device, without a separate search window. Account permissions, Premium playback access and provider rate limits apply; failures stay in the search view.
-- **Lyrics:** timed lyrics when a matching LRCLIB record exists, plain lyrics when only text is available, and clear unavailable states.
+- **Lyrics:** timed lyrics from LRCLIB, then NetEase, Kugou and QQ Music (only for the same title, artist and length), plain lyrics when only text is available, and clear unavailable states. Import your own `.lrc` or `.txt` file for any song from the lyrics header; it replaces what the sources found until you remove it.
 - **Original Spotify covers:** use the running Spotify client’s largest cover or matching catalogue metadata, then test the public high-resolution CDN variant for the same artwork ID. A variant is accepted only when its actual image dimensions are larger; unavailable variants retain the original. The live client check decoded a 1500 × 1500 cover. Spotify provider retry deadlines are preserved across restarts.
 - **Keep reading:** the lyric reader stays open when the pointer leaves. Close it, choose Home, or scroll back to leave the reader.
 - **Resume the current video:** collapsing the island pauses and retains its resolved video and decoder. Reopening resumes against the song clock without repeating the lookup. Hidden playback checks stop, and changing the song or video settings releases the previous source. Small timing drift is corrected gently to keep frames flowing.
@@ -154,6 +154,21 @@ Basic playback and the audio spectrum use Spotify's Windows desktop session. An 
 Saved credentials stay in **Windows Credential Manager**, separate from normal preferences. Sudo does not automatically read browser cookies. Short-lived access tokens can expire; cookie exchange can stop working when Spotify changes its unofficial challenge. Missing access is shown in the app, and an action is not presented as successful until confirmed.
 
 </details>
+
+## Tools
+
+The island's fourth tab (below Sudo AI) holds everyday tools. Pick one with the small tabs at the top; each runs only while it is shown.
+
+- **Mixer:** volume and mute for every app playing sound (with a live level), the master volume, and the output device Windows plays through.
+- **Clipboard:** the last 50 things you copied (text, images and files) on this PC. Click to copy again, **Paste** to put it straight into the app you were using, pin favourites. Anything a password manager marks private is never saved. Turn it off in **Settings → Tools**.
+- **Shelf:** drag files onto the island to park them, then drag them out to File Explorer, a chat or an email, copy them, open them or show them in their folder. The shelf links to the originals; nothing is copied or moved.
+- **Agents:** follow Claude Code and Codex sessions (working, waiting for you, finished) and answer Claude Code's permission prompts with **Allow** or **Deny** on the island. Connect them in **Settings → Tools**: Sudo adds itself as a Claude Code hook and as Codex's `notify` program (backups of both files are kept). A prompt not answered within 45 seconds goes back to the terminal; when Sudo isn't running, agents behave exactly as without it.
+- **System:** CPU, memory and GPU load with the last minute as a line. Choose **CPU, memory & GPU** as the compact widget or the Home card to keep it in view.
+- **YouTube:** search YouTube or paste a link; the video plays in a small floating window that stays on top (drag it anywhere, resize it from its corner) and is controlled from the island.
+
+**Music-reactive edges** (Settings → Look) make the island's edge glow with the beat, in the song's color, while Spotify plays.
+
+**Calendars** (Settings → Tools): paste the private iCal address of a Google, Outlook or iCloud calendar. Upcoming events join Home's **Up next**, and a quiet notice appears on the island before each event (when it starts, or 5–30 minutes before).
 
 ## Home, reminders and alarms
 

@@ -20,6 +20,8 @@ uniform float u_darkening;
 uniform float u_opacity;
 uniform float u_blur;
 uniform float u_glisse;      // 0 = Sudo glass, 1 = Glisse liquid glass (eased between)
+uniform float u_pulse;       // music-reactive edge glow, 0..1 (0 = off)
+uniform vec3 u_pulseColor;   // its colour (sRGB)
 
 out vec4 outColor;
 
@@ -114,7 +116,9 @@ void main() {
   float s = 1.0 - smoothstep(SHADOW_IN, SHADOW_OUT, sdRoundedRect(lp - vec2(0.0, SHADOW_Y), halfSize, r));
   float shadow = SHADOW_A * s * s;
   if (coverage <= 0.0) {
-    outColor = vec4(0.0, 0.0, 0.0, shadow * u_opacity);
+    // Music-reactive glow just outside the edge, over the shadow.
+    float halo = u_pulse * (1.0 - smoothstep(0.0, 3.0 + 9.0 * u_pulse, d)) * 0.55;
+    outColor = vec4(u_pulseColor * halo, halo + shadow * (1.0 - halo)) * u_opacity;
     return;
   }
 
@@ -235,6 +239,11 @@ void main() {
     rgb = mix(rgb, clamp(g, 0.0, 1.0), u_glisse);
     a = mix(a, ga, u_glisse);
     shadow *= 1.0 - 0.65 * u_glisse;
+  }
+  // Music-reactive edge: the rim brightens in the song's colour with the beat.
+  if (u_pulse > 0.0) {
+    float rimGlow = (1.0 - smoothstep(0.0, 2.0 + 5.0 * u_pulse, depth)) * u_pulse;
+    rgb = mix(rgb, max(rgb, u_pulseColor), clamp(rimGlow * 0.9, 0.0, 1.0));
   }
   outColor = vec4(rgb * a, a + shadow * (1.0 - a)) * u_opacity;
 }

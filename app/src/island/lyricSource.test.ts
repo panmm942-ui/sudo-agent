@@ -75,3 +75,20 @@ describe('second lyrics source',()=>{
     expect(asked).toBe(false);
   });
 });
+
+describe('imported lyrics',()=>{
+  it('a file the user imported wins over every source, timed or plain',async()=>{
+    const {importedLyricsResult,createLyricsSource:create}=await import('./lyricSource');
+    expect(importedLyricsResult('[00:01.00]a\n[00:02.00]b\n[00:03.00]c')?.kind).toBe('lyrics');
+    expect(importedLyricsResult('[ti:Song]\nfirst line\nsecond line')).toEqual({kind:'lyrics',text:'Song\nfirst line\nsecond line'.replace('Song\n','')});
+    expect(importedLyricsResult('   ')).toBeNull();
+    const seen:unknown[]=[];
+    let asked=false;
+    const source=create(value=>seen.push(value),{provider:async()=>{asked=true;return {kind:'missing'};},local:async()=>null,extra:async()=>null,imported:()=> '[00:01.00]mine\n[00:02.00]all\n[00:03.00]mine'});
+    source.request({key:'k',title:'T',artist:'A',album:'',duration:100});
+    await new Promise(r=>setTimeout(r,10));
+    source.stop();
+    expect(asked).toBe(false);
+    expect((seen.at(-1) as {text:string}).text).toBe('mine\nall\nmine');
+  });
+});

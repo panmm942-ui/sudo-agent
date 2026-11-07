@@ -118,8 +118,18 @@ function step(s: MachineState, e: IslandEvent): MachineState {
     return s.state === "alarm" ? { ...s, payload } : go(s, "alarm", payload);
   }
 
+  if (e.type === "confirm_withdraw") {
+    const queue = pendingOf(s.payload).filter((c) => c.id !== e.id);
+    const shown = s.payload.confirm as { id: string } | undefined;
+    if (s.state === "confirm" && shown?.id === e.id) return go(s, "compact", withPending(without(s.payload, "confirm"), queue));
+    // While an alarm covers a confirm, the covered one is still in the payload: drop it and return to compact.
+    if (s.state === "alarm" && shown?.id === e.id) return { ...s, prev: "compact", payload: withPending(without(s.payload, "confirm"), queue) };
+    const payload = shown?.id === e.id ? without(s.payload, "confirm") : s.payload;
+    return queue.length === pendingOf(s.payload).length && payload === s.payload ? s : { ...s, payload: withPending(payload, queue) };
+  }
+
   if (e.type === "confirm_request") {
-    const info = { id: e.id, title: e.title, body: e.body };
+    const info: ConfirmInfo = { id: e.id, title: e.title, body: e.body, ...(e.accept ? { accept: e.accept } : {}), ...(e.reject ? { reject: e.reject } : {}) };
     if (SURFACES_CONFIRM.has(s.state)) return go(s, "confirm", { ...s.payload, confirm: info });
     return { ...s, payload: withPending(s.payload, [...pendingOf(s.payload), info]) };
   }
@@ -134,7 +144,8 @@ function step(s: MachineState, e: IslandEvent): MachineState {
   if (s.state === "confirm") {
     const pending = s.payload.confirm as { id: string } | undefined;
     if (e.type !== "confirm_result" || pending?.id !== e.id) return s;
-    return go(s, e.ok ? "thinking" : "compact", without(s.payload, "confirm"));
+    // A coding-agent prompt is answered for the agent: Sudo AI has nothing to think about.
+    return go(s, e.ok && !e.id.startsWith("agent:") ? "thinking" : "compact", without(s.payload, "confirm"));
   }
 
   switch (e.type) {

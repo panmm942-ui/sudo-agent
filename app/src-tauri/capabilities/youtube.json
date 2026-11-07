@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "youtube",
+  "description": "The floating YouTube mini-player: receives play/pause from the island and can be dragged and resized",
+  "windows": ["youtube"],
+  "permissions": ["core:default", "core:window:allow-start-dragging", "core:window:allow-start-resize-dragging"]
+}

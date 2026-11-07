@@ -7,8 +7,8 @@
     customId?:string;
     tabs?:TabPackage[];oncustom?:(id:string)=>void;
     spotify: boolean;
-    selected: "home" | "spotify" | "sudo";
-    onselect: (page: "home" | "spotify" | "sudo") => void;
+    selected: "home" | "spotify" | "sudo" | "tools";
+    onselect: (page: "home" | "spotify" | "sudo" | "tools") => void;
     onsettings: () => void;
   } = $props();
   // One height for every page, so the tab icons never shift when scrolling between tabs.
@@ -29,6 +29,9 @@
       </button>
       <button type="button" class="icon" aria-label="Sudo AI" aria-pressed={selected === "sudo"} onclick={() => onselect("sudo")}>
         <span class="sudo-mark" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="icon" aria-label="Tools" aria-pressed={selected === "tools"} onclick={() => onselect("tools")}>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="3.5"/></svg>
       </button>
     </nav>
   {#if selected==='home'&&tabs.length}<nav class="addons" aria-label="Your extensions" onwheel={event=>event.stopPropagation()}>
@@ -53,6 +56,6 @@
   .icon[aria-pressed="false"] svg { opacity: 0.76; }
   .settings { position: absolute; top: 14px; right: 12px; background: transparent; }
   .settings:hover { background: transparent; }
-  .rail { position: absolute; top: 50%; right: 12px; display: grid; gap: var(--space-1); transform: translateY(-50%);max-height:122px;overflow-y:auto;scrollbar-width:none; }
+  .rail { position: absolute; top: 50%; right: 12px; display: grid; gap: var(--space-1); transform: translateY(-50%);max-height:150px;overflow-y:auto;scrollbar-width:none; }
   .addons{position:absolute;left:20px;top:50%;transform:translateY(-50%);display:grid;gap:4px;max-height:128px;overflow-y:auto;scrollbar-width:none;pointer-events:auto;}
 </style>

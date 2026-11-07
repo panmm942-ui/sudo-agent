@@ -17,8 +17,10 @@
   import {cloudSchedule,createCompanionSync,type CloudState} from '../island/onlineCompanion';
   import {STORAGE_KEY as ROUTINE_KEY} from '../routine/scheduler';
   import { createAlarmAudio } from "../sound/alarmAudio";
+  import { sfx } from "../sound/sfx";
   import {FOCUS_KEY,focusRemaining,freshFocus,loadFocus,pauseFocus,startFocus} from '../island/homeWidgets';
   import {latestRelease,newerVersion,currentVersion,downloadUpdate,installUpdate,type DownloadedUpdate,type Release} from '../island/updates';
+  import { eventTime, parseCalendar, type CalendarEvent } from "../island/calendar";
 
   // Test/dev URL params: ?state=<IslandState>&frozen=1&backdrop=fixture&mock=voice&demo=1
   const params = new URLSearchParams(location.search);
@@ -44,6 +46,83 @@
   let upcoming = $state.raw<AlarmInfo[]>([]);
   let track = $state.raw<SpotifyTrack | null>(null);
   let preferences = $state.raw(loadPreferences(localStorage));
+  // Tools: clipboard history and coding-agent approvals follow their switches in Settings.
+  $effect(()=>{if(live)void invoke('clipboard_set_enabled',{enabled:preferences.clipboardHistory}).catch(console.warn);});
+  $effect(()=>{if(live)void invoke('agents_set_approvals',{enabled:preferences.agentApprovals}).catch(console.warn);});
+  /** Claude Code permission prompts waiting for an answer. */
+  let agentApprovals=$state(0);
+
+  // ---- Notices: calendar events and finished coding-agent turns, shown like a quiet alarm. ----
+  const NOTICE_MS=12_000;
+  let noticeSeq=0;
+  function showNotice(kind:'calendar'|'agent',label:string,detail:string,time:string,key=''):void{
+    const target=island;
+    if(!target||frozen)return;
+    // A real alarm ringing keeps the stage.
+    const current=target.getState();
+    if(current.state==='alarm'&&!(current.payload.alarm as AlarmInfo|undefined)?.id.startsWith('notice:'))return;
+    const id=`notice:${kind}:${key||++noticeSeq}`;
+    target.dispatch({type:'alarm_ring',id,label,time,...(detail?{detail}:{})});
+    setTimeout(()=>{const s=island?.getState();if(s?.state==='alarm'&&(s.payload.alarm as AlarmInfo|undefined)?.id===id)island?.dispatch({type:'alarm_stop',id});},NOTICE_MS);
+  }
+  const clock=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+
+  // ---- Calendars (Settings → Tools): events for "Up next" and their notices. ----
+  let calendarEvents=$state.raw<CalendarEvent[]>([]);
+  let calendarStatus=$state.raw<Record<string,string>>({});
+  let calendarNow=$state(Date.now());
+  let calendarRevision=$state(0);
+  const NOTIFIED_KEY='sudo.calendar.notified';
+  function notified():string[]{try{const v=JSON.parse(localStorage.getItem(NOTIFIED_KEY)??'[]');return Array.isArray(v)?v.filter(x=>typeof x==='string'):[];}catch{return [];}}
+  $effect(()=>{
+    const feeds=preferences.calendars;void calendarRevision;
+    if(!live||frozen||!feeds.length){calendarEvents=[];calendarStatus={};return;}
+    let alive=true;
+    const load=async()=>{
+      const from=Date.now()-3600_000,to=Date.now()+8*86400_000;
+      const status:Record<string,string>={};
+      const all:CalendarEvent[]=[];
+      await Promise.all(feeds.map(async feed=>{
+        try{const text=await invoke<string>('calendar_fetch',{url:feed.url});const events=parseCalendar(text,from,to,feed.name);all.push(...events);status[feed.id]=`Connected · ${events.length} event${events.length===1?'':'s'} in the next week`;}
+        catch(error){status[feed.id]=String(error);}
+      }));
+      if(!alive)return;
+      calendarEvents=all.sort((a,b)=>a.start-b.start);calendarStatus=status;calendarNow=Date.now();
+    };
+    void load();
+    const timer=setInterval(()=>void load(),15*60_000);
+    return()=>{alive=false;clearInterval(timer);};
+  });
+  $effect(()=>{
+    if(!live||frozen||!calendarEvents.length)return;
+    const check=()=>{
+      calendarNow=Date.now();
+      if(!preferences.calendarNotices)return;
+      const done=notified(),lead=preferences.calendarLead*60_000;
+      for(const event of calendarEvents){
+        if(event.allDay)continue;
+        const key=`${event.uid}@${event.start}`;
+        if(calendarNow<event.start-lead||calendarNow>event.start+5*60_000||done.includes(key))continue;
+        done.push(key);
+        const minutes=Math.round((event.start-calendarNow)/60_000);
+        const when=minutes>0?`Starts in ${minutes} min`:'Starting now';
+        showNotice('calendar',event.title,[when,event.location].filter(Boolean).join(' · '),eventTime(event,calendarNow),String(event.start));
+        break;
+      }
+      try{localStorage.setItem(NOTIFIED_KEY,JSON.stringify(done.slice(-200)));}catch{/* optional */}
+    };
+    untrack(check);
+    const timer=setInterval(check,30_000);
+    return()=>clearInterval(timer);
+  });
+  /** Routine reminders and calendar events together, soonest first. */
+  const nextUp=$derived.by(()=>{
+    const now=calendarNow;
+    const at=(time:string)=>{const m=/^(\d{1,2}):(\d{2})$/.exec(time);if(!m)return Infinity;const d=new Date(now);d.setHours(+m[1],+m[2],0,0);if(d.getTime()<now-60_000)d.setDate(d.getDate()+1);return d.getTime();};
+    const items=[...upcoming.map(item=>({...item,at:at(item.time)})),
+      ...calendarEvents.filter(e=>e.allDay?e.end>now:e.start>now-5*60_000).slice(0,6).map(e=>({id:`calendar:${e.uid}:${e.start}`,label:e.title,time:eventTime(e,now),at:e.allDay?e.start+1:e.start}))];
+    return items.sort((a,b)=>a.at-b.at).map(({at:_,...item})=>item);
+  });
   $effect(()=>{
     applyDesign(preferences.islandDesign);
     if(preferences.islandDesign!=='glisse')return;
@@ -235,6 +314,13 @@
   }
 
   function acknowledgeAlarm(id: string, snooze: boolean): void {
+    if(id.startsWith('notice:')){
+      if(snooze&&id.startsWith('notice:calendar:')){
+        const alarm=island?.getState().payload.alarm as AlarmInfo|undefined;
+        if(alarm)setTimeout(()=>showNotice('calendar',alarm.label,alarm.detail??'',alarm.time,`${id.slice(16)}-again${Date.now()}`),5*60_000);
+      }
+      return;
+    }
     if(id==='focus-finished'){
       if(snooze){focusNow=Date.now();focus={remaining:preferences.snooze*60_000,deadline:focusNow+preferences.snooze*60_000};saveFocus();}
       return;
@@ -264,6 +350,9 @@
   }
 
   function alarmChanged(ringing: boolean): void {
+    // Notices don't ring and never pause the music: a soft chime at most.
+    const shown=island?.getState().payload.alarm as AlarmInfo|undefined;
+    if(ringing&&shown?.id.startsWith('notice:')){if(preferences.interfaceSounds)sfx.play('confirm');return;}
     clearTimeout(resumeTimer);
     if (ringing) {
       alarmAudio.play(preferences, sound?.url);
@@ -323,6 +412,17 @@
       if (disposed) off(); else unlistenLevels = off;
     }).catch(console.warn);
     listen<{ speaking?: boolean }>("jarvis_speech", (event) => island?.setSpeaking(!!event.payload?.speaking)).catch(console.warn);
+    // Coding agents (Tools → Agents): permission prompts on the island, notices when a long turn ends.
+    type Approval={id:string;agent:string;project:string;tool:string;summary:string};
+    listen<{approvals:Approval[]}>('agents_changed',event=>agentApprovals=event.payload.approvals.length).catch(console.warn);
+    void invoke<{approvals:Approval[]}>('agents_state').then(state=>agentApprovals=state.approvals.length).catch(()=>{});
+    listen<Approval>('agent_approval',event=>{
+      const a=event.payload;
+      if(!preferences.agentApprovals)return;
+      island?.dispatch({type:'confirm_request',id:`agent:${a.id}`,title:`${a.agent} wants to use ${a.tool}`,body:`${a.project} · ${a.summary}`,accept:'Allow',reject:'Deny'});
+    }).catch(console.warn);
+    listen<{id:string}>('agent_approval_closed',event=>island?.dispatch({type:'confirm_withdraw',id:`agent:${event.payload.id}`})).catch(console.warn);
+    listen<{title:string;body:string}>('agent_notice',event=>{if(preferences.agentNotices)showNotice('agent',event.payload.title,event.payload.body,clock());}).catch(console.warn);
     listen("video:cycle-background", () => island?.cycleBackgroundSource()).then((off) => {
       if (disposed) off(); else unlistenCycle = off;
     }).catch(console.warn);
@@ -440,9 +540,12 @@
       updateAvailable:!!release?.downloadable,updateDownloading,updateInstalling,updateReady:!!downloadedUpdate,
       ondownloadupdate:downloadNewVersion,oninstallupdate:installNewVersion,
       onupdate: updatePreferences, onfile: saveFile, ontest: testAlarm,
+      calendarStatus, onrefreshcalendars: () => calendarRevision++,
       onpreview: (ended) => alarmAudio.play(preferences, sound?.url, ended),
       onstoppreview: () => { if (island?.getState().state !== "alarm") alarmAudio.stop(); } }}
-    {upcoming} ontestalarm={routineEnabled ? testAlarm : undefined} onalarmdismiss={acknowledgeAlarm} />
+    upcoming={nextUp} ontestalarm={routineEnabled ? testAlarm : undefined} onalarmdismiss={acknowledgeAlarm}
+    approvals={agentApprovals}
+    onconfirmresult={(id,ok)=>{if(id.startsWith('agent:'))void invoke('agents_decide',{id:id.slice(6),allow:ok}).catch(console.warn);}} />
 {/if}
 
 <style>

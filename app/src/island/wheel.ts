@@ -1,7 +1,7 @@
-export type IslandPage = 'home' | 'spotify' | 'sudo';
+export type IslandPage = 'home' | 'spotify' | 'sudo' | 'tools';
 
 /**
- * Pages in scroll order: Home → Spotify (only while a song is available) → Sudo.
+ * Pages in scroll order: Home → Spotify (only while a song is available) → Sudo → Tools.
  * Two significant upward wheel steps on Home hide the island; no stop/restart gesture is required.
  */
 export function createWheelNavigation(){
@@ -15,8 +15,10 @@ export function createWheelNavigation(){
         steps=0;last=-Infinity;
         if(page==='home')return hasTrack?'spotify':'sudo';
         if(page==='spotify')return 'sudo';
+        if(page==='sudo')return 'tools';
         return null;
       }
+      if(page==='tools'){steps=0;last=time;return 'sudo';}
       if(page==='sudo'){steps=0;last=time;return hasTrack?'spotify':'home';}
       if(page==='spotify'){steps=0;last=time;return 'home';}
       if(time-last>2000)steps=0;

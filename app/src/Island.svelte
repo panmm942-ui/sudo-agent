@@ -18,6 +18,7 @@
   import CompactSpotify from "./content/CompactSpotify.svelte";
   import Settings from "./content/Settings.svelte";
   import Lyrics from "./content/Lyrics.svelte";
+  import Tools, { TOOLS_SECTIONS, type ToolsSection } from "./content/tools/Tools.svelte";
   import TrackVideo from './content/TrackVideo.svelte';
   import {MotionClock} from './island/motionClock';
   import {createVideoTimeline} from './island/videoTimeline';
@@ -65,6 +66,10 @@
     upcoming?: { label: string; time: string }[];
     ontestalarm?: () => void;
     onalarmdismiss?: (id: string, snooze: boolean) => void;
+    /** The user answered a confirm on the island (e.g. a Claude Code permission prompt). */
+    onconfirmresult?: (id: string, ok: boolean) => void;
+    /** Claude Code permission prompts waiting (badge on Tools → Agents). */
+    approvals?: number;
     /** State (or full machine state, e.g. with sample payload) to start in. */
     initial?: IslandState | MachineState;
     /** Springs snap to their targets and shader time stays at 0 (visual goldens). */
@@ -97,6 +102,8 @@
     upcoming,
     ontestalarm,
     onalarmdismiss,
+    onconfirmresult,
+    approvals = 0,
     initial = "dormant",
     frozen = false,
     backdrop = null,
@@ -157,7 +164,13 @@
   const wheel = createWheelNavigation();
   let settingsTab = $state<SettingsTab | null>(null);
   let selection = $state<IslandPage | null>(null);
-  let pinnedPages = $state({ home: false, spotify: false, sudo: false });
+  let pinnedPages = $state({ home: false, spotify: false, sudo: false, tools: false });
+  const TOOLS_KEY = "sudo.tools.section";
+  const storedSection = (() => { try { return localStorage.getItem(TOOLS_KEY); } catch { return null; } })();
+  let toolsSection = $state<ToolsSection>(TOOLS_SECTIONS.find((t) => t.id === storedSection)?.id ?? "mixer");
+  function chooseToolsSection(next: ToolsSection): void { toolsSection = next; try { localStorage.setItem(TOOLS_KEY, next); } catch { /* optional */ } }
+  /** Files are being dragged over the island (they go to Tools → Shelf when dropped). */
+  let dropHover = $state(false);
   /** The Sudo tab's conversation (typed chat with Sudo AI). */
   let chat = $state<ChatMessage[]>([]);
   let chatBusy = $state(false);
@@ -182,7 +195,7 @@
   let orbClickOn = $state(false);
   let askFocused = $state(false);
   function togglePin(): void { pinnedPages[page] = !pinnedPages[page]; }
-  function clearScrollPins(): void { pinnedPages = { home: false, spotify: false, sudo: false }; }
+  function clearScrollPins(): void { pinnedPages = { home: false, spotify: false, sudo: false, tools: false }; }
   let lyricsOpen = $state(false);
   let videoMenu = $state(false);
   // Right-click hides the extra controls on Lyrics and on the Spotify player; right-click again shows them.
@@ -196,8 +209,9 @@
   let avoiding = $state(false);
   let avoidOffset = $state(0);
   let audioLevel = $state<readonly number[]|null>(null);
-  const page = $derived<IslandPage>(selection==='sudo' ? "sudo" : selection==='spotify'||(track&&selection!=='home') ? "spotify" : "home");
+  const page = $derived<IslandPage>(selection==='tools' ? "tools" : selection==='sudo' ? "sudo" : selection==='spotify'||(track&&selection!=='home') ? "spotify" : "home");
   const sudoExpanded = $derived(machine.state === "expanded" && page === "sudo" && !settingsTab && !customId);
+  const toolsExpanded = $derived(machine.state === "expanded" && page === "tools" && !settingsTab && !customId);
   const pinned = $derived(pinnedPages[page]);
   const resting = $derived(machine.state === "dormant" || machine.state === "compact");
   const spotifyExpanded = $derived(machine.state === "expanded" && page === "spotify" && !settingsTab);
@@ -302,8 +316,8 @@
   const lowMotion = $derived(preferences.reduceMotion || !!reducedMotion?.matches);
 
   const handlers: ContentHandlers = {
-    onconfirm: (id) => dispatch({ type: "confirm_result", id, ok: true }),
-    oncancel: (id) => dispatch({ type: "confirm_result", id, ok: false }),
+    onconfirm: (id) => { onconfirmresult?.(id, true); dispatch({ type: "confirm_result", id, ok: true }); },
+    oncancel: (id) => { onconfirmresult?.(id, false); dispatch({ type: "confirm_result", id, ok: false }); },
     onsnooze: (id) => dismissAlarm(id, true),
     onstop: (id) => dismissAlarm(id, false),
     onresize: (h) => setContentHeight(h),
@@ -433,7 +447,7 @@
     return()=>{clearTimeout(timer);burnDim=false;};
   });
 
-  const MORPH_SHAPE: Record<IslandPage, MorphShape> = { home: "logo", spotify: "art", sudo: "orb" };
+  const MORPH_SHAPE: Record<IslandPage, MorphShape> = { home: "logo", spotify: "art", sudo: "orb", tools: "logo" };
   /** A running cover ↔ orb morph (plain, read by the frame loop only). */
   let orbMorph: { t: number; into: boolean; box: { left: number; top: number; width: number; height: number } } | null = null;
   const smoothstep = (a: number, b: number, x: number) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
@@ -448,7 +462,7 @@
     const artwork = track?.artwork ?? null;
     const videoShown = canvasReady && preferences.videoHideArtwork;
     if (lowMotion || frozen || from === to || !artwork || videoShown || machine.state !== "expanded" || settingsTab || lyricsOpen) return;
-    if (!(from === "spotify" || to === "spotify")) return;
+    if (!(from === "spotify" || to === "spotify") || from === "tools" || to === "tools") return;
     // Only when the shared spot is the measured cover box (not the default guess).
     if (!artSpots[spotKey]) return;
     const frame = contentEl?.querySelector<HTMLElement>(".frame");
@@ -508,7 +522,7 @@
   /** +1 when the new page is below (Home → Spotify → Sudo), -1 above; 0 for any other change. */
   let pageDirection = $state(0);
   let pageDirectionTimer: ReturnType<typeof setTimeout> | undefined;
-  const PAGE_ORDER: Record<IslandPage, number> = { home: 0, spotify: 1, sudo: 2 };
+  const PAGE_ORDER: Record<IslandPage, number> = { home: 0, spotify: 1, sudo: 2, tools: 3 };
 
   function choosePage(next: IslandPage): void {
     if (next === "spotify" && page === "spotify" && spotifyExpanded && !lyricsOpen && !searchOpen) { cycleBackground(); return; }
@@ -542,6 +556,15 @@
     const onset = f.onset || (!!heard && heard.f.onset);
     heard = { f: { ...f, onset }, at: performance.now() };
     requestFrame();
+  }
+
+  /** Opens the island on Tools at `section` (files dragged in, a permission prompt to answer). */
+  export function openTools(section: ToolsSection): void {
+    if (settingsTab) closeSettings();
+    setHidden(false);
+    chooseToolsSection(section);
+    if (page !== "tools") choosePage("tools");
+    openExpanded();
   }
 
   export function openJarvisSettings(): void {
@@ -723,7 +746,7 @@
     // Consume elapsed time under the old target before the input changes it.
     advance(now,motionClock.retarget(now));
     const s = machine.state;
-    const shape = settingsTab ? SETTINGS_SHAPE : customTab && s==='expanded' ? SPOTIFY_SHAPE : spotifyExpanded || homeSameAsSpotify || sudoExpanded ? playerShape : resting && desktopControls ? MINI_SHAPE : { ...SIZES[s], h: heightFor(s, contentHeight) };
+    const shape = settingsTab ? SETTINGS_SHAPE : customTab && s==='expanded' ? SPOTIFY_SHAPE : spotifyExpanded || homeSameAsSpotify || sudoExpanded || toolsExpanded ? playerShape : resting && desktopControls ? MINI_SHAPE : { ...SIZES[s], h: heightFor(s, contentHeight) };
     // Clear the glass shader's drop shadow as well as the pill when hiding.
     const targets = [shape.w, shape.h, shape.r, hidden ? -Math.max(pill.h, shape.h) - 32 : PILL_TOP + (avoiding ? avoidOffset : 0) + (resting ? burnShift.y : 0)];
     const geometryCfg = desktopControls && (s === 'expanded' || resting) ? SPRINGS.panel : cfg;
@@ -779,6 +802,29 @@
     const glisse=glisseTarget===1;
     r.setAppearance(glisse?'glass':preferences.islandBorder, darkness, glisse?1:surfaceOpacity, glisse?0:preferences.backgroundBlur);
     return Math.abs(glisseMix-glisseTarget)>1e-3 || Math.abs(surfaceOpacity-opacityTarget)>1e-3 || Math.abs(tintAlpha - target) > 1e-3 || Math.abs(darkness - darknessTarget) > 1e-3 || !next.settled;
+  }
+
+  /** Edge glow: target from the music, eased value drawn by the shader (plain: read by the frame loop). */
+  let edgeTarget = 0;
+  let pulseTimer: ReturnType<typeof setTimeout> | undefined;
+  let edgePulse = 0;
+  /** Loudness of the beat (bass weighted) on the same dB scale as the waves, 0..1. */
+  function edgeEnergy(bands: readonly number[]): number {
+    const db = (a: number) => (a > 0 ? Math.max(0, Math.min(1, (20 * Math.log10(a * 1.6) + 65) / 55)) : 0);
+    const bass = Math.max(db(bands[0] ?? 0), db(bands[1] ?? 0));
+    const mid = ((bands[2] ?? 0) + (bands[3] ?? 0) + (bands[4] ?? 0)) / 3;
+    const e = bass * 0.75 + db(mid) * 0.25;
+    return Math.max(0, Math.min(1, (e - 0.35) / 0.6)) ** 1.6;
+  }
+  function stepEdges(r: GlassRenderer, dt: number): boolean {
+    const target = edgeTarget * (preferences.edgeIntensity / 100);
+    // Fast attack on the beat, slower fall.
+    edgePulse += (target - edgePulse) * (1 - Math.exp(-dt / (target > edgePulse ? 0.05 : 0.22)));
+    if (edgePulse < 0.003 && target === 0) edgePulse = 0;
+    const c = coverColor ?? [1, 1, 1];
+    const glow: [number, number, number] = [c[0] * 0.55 + 0.45, c[1] * 0.55 + 0.45, c[2] * 0.55 + 0.45];
+    r.setPulse(edgePulse, glow);
+    return edgePulse > 0;
   }
 
   /** Orb mode, slot, fade and voice features; true while the orb needs more frames. */
@@ -841,6 +887,7 @@
     if (ORB_MODE[machine.state] || orb.opacity > 0) flushSync();
     const tinting = stepTint(renderer, dt);
     const orbing = stepOrb(dt);
+    const pulsing = stepEdges(renderer, dt);
     const moving = !!tween || springs.some((sp) => !sp.atRest);
     // One final clear at the end of hiding; don't redraw an invisible canvas for desktop changes.
     if (!hidden || moving || wasMoving) renderer.render(frozen ? 0 : t);
@@ -865,8 +912,27 @@
       requestAnimationFrame(() => onready?.());
     }
     if (moving || tinting || orbing) requestFrame();
+    // Only the edge glow is easing: ~30 frames a second is plenty (and spares the GPU).
+    else if (pulsing) { clearTimeout(pulseTimer); pulseTimer = setTimeout(requestFrame, 33); }
     else {last = 0;motionClock.sleep();}
   }
+
+  // Files dragged onto the island open Tools → Shelf; dropping keeps them there.
+  onMount(() => {
+    if (!live) return;
+    let disposed = false, off: (() => void) | undefined;
+    void import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => getCurrentWebview().onDragDropEvent((event) => {
+      const drop = event.payload;
+      if (drop.type === "enter" || drop.type === "over") { if (!dropHover) { dropHover = true; openTools("shelf"); } }
+      else if (drop.type === "leave") dropHover = false;
+      else if (drop.type === "drop") {
+        dropHover = false;
+        if (drop.paths.length) void invoke("shelf_add", { paths: drop.paths })
+          .then(() => import("@tauri-apps/api/event")).then(({ emit }) => emit("shelf_changed")).catch(console.warn);
+      }
+    })).then((u) => { if (disposed) u(); else off = u; }).catch(console.warn);
+    return () => { disposed = true; off?.(); clearTimeout(pulseTimer); };
+  });
 
   onMount(() => {
     if(live) {
@@ -885,7 +951,7 @@
     if(desktopControls)nativeHidden(hidden);
     if (desktopControls && preferences.rememberPage) {
       const stored = localStorage.getItem(PAGE_KEY);
-      if (stored === "home" || stored === "spotify" || stored === "sudo") selection = stored;
+      if (stored === "home" || stored === "spotify" || stored === "sudo" || stored === "tools") selection = stored;
     }
     try {
       renderer = new GlassRenderer(canvas, requestFrame);
@@ -1032,11 +1098,16 @@
   });
   $effect(() => { setIslandFocus(wantsFocus); });
 
-  const meterEnabled = $derived(live && (spotifyCompact || (spotifyExpanded&&preferences.spotifyLayout==='wide'&&!lyricsOpen&&!searchOpen)) && !hidden && !!track?.playing && preferences.waves && preferences.waveReactivity>0 && !lowMotion);
+  const wavesMeter = $derived(live && (spotifyCompact || (spotifyExpanded&&preferences.spotifyLayout==='wide'&&!lyricsOpen&&!searchOpen)) && !hidden && !!track?.playing && preferences.waves && preferences.waveReactivity>0 && !lowMotion);
+  /** The island's edges pulse with the music while a song plays (Settings → Look). */
+  const edgesActive = $derived(live && preferences.reactiveEdges && preferences.edgeIntensity > 0 && !!track?.playing && !hidden && !lowMotion && !settingsTab && (resting || machine.state === "expanded"));
+  const meterEnabled = $derived(wavesMeter || edgesActive);
   $effect(() => {
-    if (!meterEnabled) { audioLevel = null; return; }
+    if (!meterEnabled) { audioLevel = null; edgeTarget = 0; requestFrame(); return; }
     return watchSpotifyLevels(level => {
       audioLevel = level;
+      edgeTarget = edgesActive && level ? edgeEnergy(level) : 0;
+      if (edgesActive) requestFrame();
     });
   });
 
@@ -1045,7 +1116,7 @@
   });
 
   const pinnedClearance=$derived(preferences.pinnedEdgeClearance&&(pinned||lyricsOpen)&&machine.state==='expanded'&&!settingsTab);
-  const clearanceOffset=$derived(pinnedClearance?(customTab?218:page==='spotify'||page==='home'||page==='sudo'?playerShape.h+8:198):44);
+  const clearanceOffset=$derived(pinnedClearance?(customTab?218:page==='spotify'||page==='home'||page==='sudo'||page==='tools'?playerShape.h+8:198):44);
   const edgeEnabled=$derived((preferences.edgeAvoidance||pinnedClearance) && !hidden && !settingsTab && (resting || machine.state === "expanded"));
   $effect(() => {
     if (!live) return;
@@ -1057,7 +1128,7 @@
   export function setAvoiding(active: boolean, offset=44, overIsland=false): void {
     if(active)avoidOffset=Number.isFinite(offset)?Math.max(44,Math.min(480,offset)):44;
     avoiding = active && (preferences.edgeAvoidance||pinnedClearance);
-    if(avoiding&&machine.state==='expanded')resizeNativeWindow(Math.max(480,PILL_TOP+avoidOffset+(page==='spotify'||page==='home'||page==='sudo'?playerShape.h:customTab?210:190)+32));
+    if(avoiding&&machine.state==='expanded')resizeNativeWindow(Math.max(480,PILL_TOP+avoidOffset+(page==='spotify'||page==='home'||page==='sudo'||page==='tools'?playerShape.h:customTab?210:190)+32));
     if (!avoiding) {
       restoreWindowSize();
       // Pointerleave was intentionally held while crossing the cleared corridor.
@@ -1074,9 +1145,9 @@
     if (!live) return;
     // Home and Sudo take the Spotify panel's size, so a tall layout (Cover card, 420 px) needs a
     // taller window on all three tabs, not only on Spotify, or their lower part is cut off.
-    const pageTall = machine.state === "expanded" && !customTab && (spotifyExpanded || homeSameAsSpotify || sudoExpanded) && PILL_TOP + playerShape.h + 24 > 280;
+    const pageTall = machine.state === "expanded" && !customTab && (spotifyExpanded || homeSameAsSpotify || sudoExpanded || toolsExpanded) && PILL_TOP + playerShape.h + 24 > 280;
     const large = !!settingsTab || (avoiding && machine.state === "expanded") || coverExpanded || pageTall;
-    const wanted=settingsTab?480:avoiding&&machine.state==='expanded'?Math.max(480,PILL_TOP+avoidOffset+(page==='spotify'||page==='home'||page==='sudo'?playerShape.h:customTab?210:190)+32):coverExpanded||pageTall?Math.max(480,PILL_TOP+playerShape.h+50):280;
+    const wanted=settingsTab?480:avoiding&&machine.state==='expanded'?Math.max(480,PILL_TOP+avoidOffset+(page==='spotify'||page==='home'||page==='sudo'||page==='tools'?playerShape.h:customTab?210:190)+32):coverExpanded||pageTall?Math.max(480,PILL_TOP+playerShape.h+50):280;
     if(large)untrack(()=>resizeNativeWindow(wanted));else untrack(restoreWindowSize);
   });
 
@@ -1164,6 +1235,11 @@
             onorb={() => void invoke("jarvis_listen").catch(() => {})} onsetup={() => openSettings("jarvis")}
             onturnon={() => void invoke<{ wake?: boolean }>("jarvis_status").then((s) => invoke("jarvis_set_enabled", { enabled: true, wake: !!s.wake })).catch(() => {})} />
         </div>
+      {:else if toolsExpanded}
+        <div class="frame" style:width="{playerShape.w}px" style:height="{playerShape.h}px">
+          <Tools section={toolsSection} {approvals} {preferences} onsection={chooseToolsSection} onupdate={(patch) => onpreferences?.(patch)}
+            onfocuschange={(focused) => (askFocused = focused)} onsettings={() => openSettings("tools")} />
+        </div>
       {:else if spotifyCompact && track}
         <div class="frame" style:width="{MINI_SHAPE.w}px" style:height="{MINI_SHAPE.h}px">
           <CompactSpotify {track} orb={smallOrb} marquee={preferences.spotifyMarquee} waves={preferences.waves} reactive={true} sensitivity={preferences.waveSensitivity} style={preferences.waveStyle} reactivity={preferences.waveReactivity} smoothness={preferences.waveSmoothness} level={audioLevel} reduceMotion={lowMotion} onclick={openExpanded} />
@@ -1197,9 +1273,12 @@
       </div>
     {/if}
     {#if desktopControls && machine.state === "expanded" && !settingsTab && settingsProps && !(lyricsOpen && lyricsMinimal) && !(spotifyExpanded && !lyricsOpen && spotifyMinimal && !searchOpen)}
-      <IslandNavigation top={pill.y} clipWidth={pill.w} clipHeight={pill.h} radius={pill.r} spotify={!!track} selected={page} customId={customTab?.id} tabs={activeTabs} oncustom={id=>{closeLyrics();searchOpen=false;selection='home';customId=id;}} onselect={choosePage} onsettings={() => openSettings(page === "spotify" ? "spotify" : page === "sudo" ? "jarvis" : "home")} />
+      <IslandNavigation top={pill.y} clipWidth={pill.w} clipHeight={pill.h} radius={pill.r} spotify={!!track} selected={page} customId={customTab?.id} tabs={activeTabs} oncustom={id=>{closeLyrics();searchOpen=false;selection='home';customId=id;}} onselect={choosePage} onsettings={() => openSettings(page === "spotify" ? "spotify" : page === "sudo" ? "jarvis" : page === "tools" ? "tools" : "home")} />
     {:else if desktopControls && resting && !spotifyCompact && !preferences.hoverExpand}
       <button type="button" class="open-island" aria-label="Expand Sudo" onclick={openExpanded}></button>
+    {/if}
+    {#if dropHover}
+      <div class="drop-zone" aria-hidden="true">Drop to keep on the shelf</div>
     {/if}
     {#if smallOrb}
       <!-- Sudo AI's orb on the small island whenever no song is playing; clicking it starts listening. -->
@@ -1228,6 +1307,7 @@
   .video-menu button:hover { background: var(--surface-control-hover); }
   .video-unavailable { display: block; max-width: 240px; padding: 8px 12px; font: var(--type-caption); color: var(--text-primary); }
   .open-island { position: absolute; inset: 0; width: 100%; border: 0; border-radius: inherit; background: transparent; cursor: pointer; }
+  .drop-zone { position: absolute; inset: 8px; z-index: 6; display: grid; place-items: center; border: 1.5px dashed #ffffff80; border-radius: calc(var(--r, 40px) - 8px); background: #0008; font: var(--type-label); pointer-events: none; border-radius: 36px; }
   .compact-orb { position: absolute; right: 5px; top: 50%; z-index: 5; transform: translateY(-50%); }
   .home-pin-surface { position: absolute; inset: 12px 64px 12px 20px; border: 0; border-radius: 18px; background: transparent; cursor: pointer; }
   .pin-indicator { position: absolute; bottom: 5px; left: 50%; width: 72px; height: 2px; border-radius: 2px; background: #ffffff70; transform: translateX(-50%); pointer-events: none; }

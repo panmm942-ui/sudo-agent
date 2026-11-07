@@ -676,6 +676,12 @@ mod keys {
     pub fn tap(_: u16) {} pub fn chord(_: &[u16]) {} pub fn type_text(_: &str) {} pub fn note_foreground() {} pub fn focus_user_window() {}
 }
 pub use keys::note_foreground;
+/// Gives the keyboard back to the user's window and presses Ctrl+V there (clipboard history).
+pub fn paste_into_user_window() {
+    keys::focus_user_window();
+    std::thread::sleep(std::time::Duration::from_millis(140));
+    keys::chord(&[0x11, 0x56]);
+}
 pub use keys::focus_user_window;
 #[cfg(windows)]
 pub use keys::user_window;

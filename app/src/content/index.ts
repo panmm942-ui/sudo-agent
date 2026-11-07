@@ -33,6 +33,8 @@ export interface ConfirmPayload {
   id: string;
   title: string;
   body: string;
+  accept?: string;
+  reject?: string;
 }
 export interface AlarmPayload {
   id: string;

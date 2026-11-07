@@ -13,6 +13,27 @@ Each release on GitHub carries the installer, the portable executable and `SHA25
 earlier builds whose releases are no longer published. Before 1.0.0 the public surface (preferences format, extension package format)
 may still change in a MINOR release; such changes are called out explicitly.
 
+## [Unreleased]
+
+### Added
+- **Tools tab** (the island's fourth tab, below Sudo AI):
+  - **Mixer:** per-app volume and mute with live levels, the master volume, and switching the
+    Windows output device.
+  - **Clipboard:** history of the last 50 copies (text, images, files); copy again or paste into the
+    app you were using; pin entries. Content marked private by password managers is never saved.
+  - **Shelf:** drop files on the island, drag them out to any app, copy, open or reveal them.
+  - **Agents:** live Claude Code and Codex sessions, and Claude Code permission prompts answered with
+    Allow / Deny on the island (Settings → Tools → Connect). Unanswered prompts return to the
+    terminal after 45 seconds.
+  - **System:** CPU, memory and GPU load; also available as the compact widget and a Home card.
+  - **YouTube:** search or paste a link and play it in a floating, always-on-top mini-player that the
+    island controls.
+- Music-reactive edges: the island's edge glows with the beat in the song's color (Settings → Look).
+- Calendars: subscribe to Google, Outlook or iCloud calendars by their iCal address. Events join
+  Home's "Up next" and show a quiet notice before they start.
+- Lyrics: Kugou and QQ Music as further timed-lyrics sources, and importing your own `.lrc` / `.txt`
+  file for a song.
+
 ## [1.1.1] - 2026-11-06
 
 ### Fixed
