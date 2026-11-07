@@ -13,7 +13,7 @@ Each release on GitHub carries the installer, the portable executable and `SHA25
 earlier builds whose releases are no longer published. Before 1.0.0 the public surface (preferences format, extension package format)
 may still change in a MINOR release; such changes are called out explicitly.
 
-## [Unreleased]
+## [1.2.0] - 2026-11-07
 
 ### Added
 - **Tools tab** (the island's fourth tab, below Sudo AI):
@@ -33,6 +33,12 @@ may still change in a MINOR release; such changes are called out explicitly.
   Home's "Up next" and show a quiet notice before they start.
 - Lyrics: Kugou and QQ Music as further timed-lyrics sources, and importing your own `.lrc` / `.txt`
   file for a song.
+
+### Changed
+- Home, Spotify and Sudo sit in the centred column on the right again; Tools has its own button on
+  the left.
+- Right-clicking the Spotify tab keeps the song bar, Previous and Next, and hides the other buttons
+  in place, so the cover and controls no longer move.
 
 ## [1.1.1] - 2026-11-06
 
