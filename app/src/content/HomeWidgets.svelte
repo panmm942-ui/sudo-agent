@@ -3,6 +3,7 @@
   import type {Preferences} from '../island/preferences';
   import {describe, loadWeather, type Weather} from '../island/weather';
   import SudoLogo from './SudoLogo.svelte';
+  import {percent,watchSystem,type SystemStats} from '../island/system';
 
   /**
    * Home: the Sudo capsule sits where the album art sits on Spotify (it morphs into the cover when
@@ -18,6 +19,8 @@
   let now=$state(new Date());
   let weather=$state<Weather|null>(null);
   let battery=$state<{level:number;charging:boolean}|null>(null);
+  let stats=$state<SystemStats|null>(null);
+  $effect(()=>{if(!preferences.homeWidgets.includes('system'))return;return watchSystem(s=>stats=s);});
 
   onMount(()=>{
     let timer:ReturnType<typeof setTimeout>;
@@ -83,6 +86,9 @@
               <p class="label">{preferences.homeCity||'Weather'}</p>
               {#if weather}{@const w=describe(weather.code,weather.isDay)}<p class="value"><span aria-hidden="true">{w.glyph}</span> {weather.temperature}° <span class="muted">{w.label}</span></p>
               {:else}<p class="value muted">{preferences.homeCity?'…':'Set a city in Settings → Home'}</p>{/if}
+            {:else if widget==='system'}
+              <p class="label">System</p>
+              <p class="value tabular">CPU {percent(stats?.cpu)} <span class="muted">· RAM {percent(stats?.memory)}{#if stats?.gpu!=null} · GPU {percent(stats.gpu)}{/if}</span></p>
             {:else if widget==='battery'}
               <p class="label">Battery</p>
               {#if battery}<p class="value">{Math.round(battery.level*100)}%{#if battery.charging} <span class="muted">· charging</span>{/if}</p>{:else}<p class="value muted">Unavailable</p>{/if}

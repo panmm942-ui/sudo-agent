@@ -306,3 +306,24 @@ describe("springFor", () => {
     expect(springFor("dormant", "dormant")).toBe("snappy");
   });
 });
+
+describe("coding-agent prompts", () => {
+  const agentAsk: IslandEvent = { type: "confirm_request", id: "agent:7", title: "Claude Code · app", body: "Bash: npm test", accept: "Allow", reject: "Deny" };
+  it("keeps the button labels and settles to compact when allowed", () => {
+    let s = reduce(initialState(), agentAsk);
+    expect(s.state).toBe("confirm");
+    expect(s.payload.confirm).toEqual({ id: "agent:7", title: "Claude Code · app", body: "Bash: npm test", accept: "Allow", reject: "Deny" });
+    s = reduce(s, { type: "confirm_result", id: "agent:7", ok: true });
+    expect(s.state).toBe("compact");
+  });
+  it("is withdrawn when answered in the terminal, shown or queued", () => {
+    let s = reduce(initialState(), agentAsk);
+    s = reduce(s, { type: "confirm_withdraw", id: "agent:7" });
+    expect(s.state).toBe("compact");
+    expect(s.payload.confirm).toBeUndefined();
+    s = reduce(reduce({ ...initialState(), state: "expanded" }, agentAsk), { type: "confirm_withdraw", id: "agent:7" });
+    expect(s.state).toBe("expanded");
+    expect(s.payload.pendingConfirm).toBeUndefined();
+  });
+});
+

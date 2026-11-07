@@ -36,8 +36,8 @@
     {#if confirm?.body}<p id="confirm-body" class="body">{confirm.body}</p>{/if}
   </div>
   <div class="actions">
-    <button type="button" class="pill-btn" onclick={reject}>Cancel</button>
-    <button type="button" class="pill-btn accent" onclick={accept}>Confirm</button>
+    <button type="button" class="pill-btn" onclick={reject}>{confirm?.reject ?? "Cancel"}</button>
+    <button type="button" class="pill-btn accent" onclick={accept}>{confirm?.accept ?? "Confirm"}</button>
   </div>
 </div>
 

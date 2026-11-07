@@ -22,6 +22,18 @@ mod canvas;
 mod artwork;
 mod video_window;
 mod lifecycle;
+mod icons;
+mod mixer;
+mod sysmon;
+mod clipboard;
+mod shelf;
+mod agents;
+mod youtube;
+mod calendar;
+mod lyrics_more;
+
+/// Hook mode for coding agents (see agents.rs); None when started normally.
+pub fn agent_hook() -> Option<i32> { agents::hook_main() }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 /// Records every unexpected error (thread, file:line, message) in `sudo-crash.log` in the data
@@ -72,6 +84,8 @@ pub fn run() {
             vocals::recover_if_needed(app.state::<vocals::Controller>().inner().clone());
             jarvis::init(handle);
             spotify_connector::watch();
+            clipboard::init(handle);
+            agents::init(handle);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -160,6 +174,36 @@ pub fn run() {
             video_window::sync_video_view,
             video_window::get_video_view,
             video_window::video_view_ready,
+            mixer::mixer_state,
+            mixer::mixer_set_app,
+            mixer::mixer_set_master,
+            mixer::mixer_set_output,
+            sysmon::system_stats,
+            clipboard::clipboard_set_enabled,
+            clipboard::clipboard_history,
+            clipboard::clipboard_use,
+            clipboard::clipboard_pin,
+            clipboard::clipboard_delete,
+            clipboard::clipboard_clear,
+            shelf::shelf_list,
+            shelf::shelf_add,
+            shelf::shelf_remove,
+            shelf::shelf_clear,
+            shelf::shelf_open,
+            shelf::shelf_reveal,
+            shelf::shelf_copy,
+            shelf::shelf_drag,
+            agents::agents_setup,
+            agents::agents_connect,
+            agents::agents_state,
+            agents::agents_set_approvals,
+            agents::agents_decide,
+            agents::agents_clear,
+            youtube::youtube_search,
+            youtube::youtube_open,
+            youtube::youtube_control,
+            calendar::calendar_fetch,
+            lyrics_more::more_lyrics,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -167,6 +211,7 @@ pub fn run() {
             if matches!(event,tauri::RunEvent::Exit) {
                 use tauri::Manager;
                 iphone_alarms::shutdown();
+                agents::shutdown();
                 vocals::shutdown(app.state::<vocals::Controller>().inner());
                 jarvis::shutdown(app.state::<jarvis::Controller>().inner(), app);
             }

@@ -12,7 +12,7 @@
   } = $props();
 
   const hhmm = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
-  let track: HTMLDivElement;
+  let track = $state<HTMLDivElement>();
   let offset = $state(0);
   let pointer = $state<number | null>(null);
   let origin = 0;
@@ -23,7 +23,7 @@
   function start(event: PointerEvent): void {
     if (pointer !== null || event.button !== 0) return;
     const thumb = event.currentTarget as HTMLButtonElement;
-    travel = Math.max(1, track.getBoundingClientRect().width - thumb.getBoundingClientRect().width - 8);
+    travel = Math.max(1, track!.getBoundingClientRect().width - thumb.getBoundingClientRect().width - 8);
     origin = event.clientX;
     distance = 0;
     pointer = event.pointerId;
@@ -51,6 +51,8 @@
     else tapArmed = distance < 5;
   }
 
+  const notice = $derived(!!alarm?.id.startsWith("notice:"));
+
   function stop(): void {
     if (alarm) onstop?.(alarm.id);
   }
@@ -70,6 +72,13 @@
     <p id="alarm-label" class="label">{alarm?.label || "Alarm"}</p>
   </div>
   {#if alarm?.detail}<p class="detail">{alarm.detail}</p>{/if}
+  {#if notice}
+    <!-- A notice (calendar event, a coding agent finishing): no ringing, just dismiss. -->
+    <div class="actions">
+      {#if alarm?.id.startsWith("notice:calendar:")}<button type="button" class="pill-btn" onclick={() => alarm && onsnooze?.(alarm.id)}>In 5 min</button>{/if}
+      <button type="button" class="pill-btn accent dismiss" onclick={stop}>Dismiss</button>
+    </div>
+  {:else}
   <div class="actions">
     {#if alarm?.id !== "routine-preview"}
       <button type="button" class="pill-btn snooze" onclick={() => alarm && onsnooze?.(alarm.id)}>Snooze</button>
@@ -87,6 +96,7 @@
       </button>
     </div>
   </div>
+  {/if}
 </div>
 
 <style>
@@ -121,6 +131,7 @@
     align-items: center;
   }
   .snooze { height: 44px; }
+  .dismiss { margin-left: auto; min-width: 110px; }
   .track {
     position: relative;
     flex: 1;

@@ -13,13 +13,15 @@
   import SpotifyBridgeSettings from './SpotifyBridgeSettings.svelte';
   import IPhoneAlarmSettings from './IPhoneAlarmSettings.svelte';
   import OnlineCompanionSettings from './OnlineCompanionSettings.svelte';
+  import ToolsSettings from './ToolsSettings.svelte';
   import type {CloudState} from '../island/onlineCompanion';
   import { invoke } from '@tauri-apps/api/core';
 
   type SwitchKey = { [K in keyof Preferences]: Preferences[K] extends boolean ? K : never }[keyof Preferences];
   let { tab = "alarm", preferences, soundName, videoName, trackTitle, onupdate, onclose, onpreview,
     onstoppreview, ontest, onfile, startupEnabled = null, startupBusy = false, startupError = "", onstartup,
-    updateBusy=false,updateMessage='',oncheckupdates,onreleases,updateAvailable=false,updateDownloading=false,updateInstalling=false,updateReady=false,ondownloadupdate,oninstallupdate,canvasError='',artworkError='',oncanvaschange,companionState=null,companionMessage='',oncompanionsync }: {
+    updateBusy=false,updateMessage='',oncheckupdates,onreleases,updateAvailable=false,updateDownloading=false,updateInstalling=false,updateReady=false,ondownloadupdate,oninstallupdate,canvasError='',artworkError='',oncanvaschange,companionState=null,companionMessage='',oncompanionsync,calendarStatus={},onrefreshcalendars }: {
+    calendarStatus?:Record<string,string>;onrefreshcalendars?:()=>void;
     companionState?:CloudState|null;companionMessage?:string;oncompanionsync?:()=>void;
     canvasError?:string;artworkError?:string;oncanvaschange?:()=>void;
     tab?: SettingsTab;
@@ -43,7 +45,7 @@
 
   const sections: { id: SettingsTab; title: string }[] = [
     { id: "general", title: "General" }, { id: "look", title: "Look" }, { id: "island", title: "Island" }, { id: "home", title: "Home" },
-    { id: "spotify", title: "Spotify" }, { id: "jarvis", title: "Sudo AI" }, { id: "alarm", title: "Alarms" },
+    { id: "spotify", title: "Spotify" }, { id: "jarvis", title: "Sudo AI" }, { id: "tools", title: "Tools" }, { id: "alarm", title: "Alarms" },
     { id: "program", title: "Program" }, { id: "marketplace", title: "Extensions" },
   ];
   // svelte-ignore state_referenced_locally
@@ -169,6 +171,11 @@
       </fieldset>
       <h3 class="group-label">Song color</h3>
       <label class="row"><span><strong>Song color on the island</strong><small>Tint the island with the current cover’s color. Settings always keeps the default look.</small></span><select aria-label="Song color on the island" value={preferences.songColor} onchange={e=>onupdate({songColor:e.currentTarget.value as Preferences['songColor']})}>{#each SONG_COLOR_SCOPES as scope (scope.id)}<option value={scope.id}>{scope.label}</option>{/each}</select></label>
+      <h3 class="group-label">Music</h3>
+      {@render toggle("reactiveEdges", "Music-reactive edges", "The island's edge glows with the beat, in the song's color, while Spotify plays.")}
+      {#if preferences.reactiveEdges}<label class="row"><span><strong>Edge glow <small class="inline">{preferences.edgeIntensity}%</small></strong><small>How strongly the edge reacts.</small></span><input type="range" min="10" max="100" value={preferences.edgeIntensity} oninput={(event)=>onupdate({edgeIntensity:event.currentTarget.valueAsNumber})} /></label>{/if}
+    {:else if section === "tools"}
+      <ToolsSettings {preferences} {onupdate} {calendarStatus} {onrefreshcalendars} />
     {:else if section === "island"}
       <p class="intro">How the island opens, hides and behaves at the top of your screen.</p>
       <h3 class="group-label">Opening and hiding</h3>
@@ -182,7 +189,7 @@
       {@render toggle('pinnedEdgeClearance','Clear space above a pinned panel','Only while a large panel is kept open (clicked to pin, or showing lyrics): move your cursor above it to slide it down by its full height, clearing the original area. Enter the lowered panel or leave the area to return it. Other edge gestures keep their small movement.')}
       <h3 class="group-label">Small island</h3>
       <label class="row"><span><strong>Always show compact tab</strong><small>Automatic follows your expanded tab.</small></span><select value={preferences.compactTab} onchange={e=>onupdate({compactTab:e.currentTarget.value})}><option value="auto">Automatic</option><option value="home">Home</option><option value="spotify">Spotify</option>{#each preferences.tabs as tab (tab.id)}<option value={'tab:'+tab.id}>{tab.name}</option>{/each}</select></label>
-      <label class="row"><strong>Compact Home widget</strong><select value={preferences.compactWidget} onchange={e=>onupdate({compactWidget:e.currentTarget.value as Preferences['compactWidget']})}><option value="clock">Clock & date</option><option value="reminders">Upcoming reminder</option><option value="focus">Focus timer</option><option value="note">Personal note</option></select></label>
+      <label class="row"><strong>Compact Home widget</strong><select value={preferences.compactWidget} onchange={e=>onupdate({compactWidget:e.currentTarget.value as Preferences['compactWidget']})}><option value="clock">Clock & date</option><option value="reminders">Upcoming reminder</option><option value="focus">Focus timer</option><option value="note">Personal note</option><option value="system">CPU, memory & GPU</option></select></label>
     {:else if section === "home"}
       <p class="intro">What Home shows. Pick up to three cards below the clock; the first three in your order are shown.</p>
       <h3 class="group-label">Widgets</h3>

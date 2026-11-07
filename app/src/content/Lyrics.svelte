@@ -6,7 +6,8 @@
   import LyricRow from './LyricRow.svelte';
   import LyricVocals from './LyricVocals.svelte';
   import type { LyricsResult } from "../island/lyrics";
-  import {createLyricsSource} from '../island/lyricSource';
+  import {createLyricsSource,importedLyricsResult} from '../island/lyricSource';
+  import {importedLyrics,saveImportedLyrics} from '../island/importedLyrics';
   import { estimateWords, lyricWindow, playbackSeconds } from "../island/lyricTiming";
   import { romanize, targetLanguage, translateLine } from "../island/lyricLanguage";
   import type { Preferences } from "../island/preferences";
@@ -15,6 +16,21 @@
   let result = $state.raw<LyricsResult | null>(null);
   let error = $state("");
   let retry = $state(0);
+  // Your own lyrics for this song (an .lrc or .txt file) replace what the sources found.
+  let importNote = $state('');
+  let importRevision = $state(0);
+  const hasImported = $derived.by(() => { void importRevision; try { return !!importedLyrics(track.key); } catch { return false; } });
+  async function importFile(event: Event & { currentTarget: HTMLInputElement }): Promise<void> {
+    const input = event.currentTarget, file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (file.size > 300_000) { importNote = 'That file is too large for lyrics.'; return; }
+    const text = await file.text();
+    if (!importedLyricsResult(text)) { importNote = 'That file has no lyrics in it.'; return; }
+    try { saveImportedLyrics(track.key, text); } catch { importNote = 'Couldn’t save the lyrics.'; return; }
+    importNote = ''; importRevision++; retry++;
+  }
+  function removeImported(): void { saveImportedLyrics(track.key, null); importRevision++; retry++; }
   let now = $state(Date.now());
   let translated = $state.raw<Record<string, string>>({});
   let romanized = $state.raw<Record<string, string>>({});
@@ -144,11 +160,14 @@
       <button type="button" aria-label="Show lyrics earlier" onclick={()=>nudge(.2)}>+</button>
     </div>{/if}
     <LyricVocals volume={preferences.vocalVolume} onchange={value=>onupdate?.({vocalVolume:value})} onlatency={seconds=>vocalLatency=seconds}/>
+    {#if hasImported&&!fullscreen}<button type="button" class="mine" title="Stop using your lyrics file for this song" onclick={removeImported}>My lyrics ✕</button>{/if}
+    {#if !fullscreen}<label class="import" title={hasImported?'Your lyrics file is shown. Import another .lrc or .txt':'Import lyrics for this song (.lrc or .txt)'}><input type="file" accept=".lrc,.txt,text/plain" onchange={importFile} /><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z M14 3v5h5 M12 11v6m-3-3 3 3 3-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr">Import lyrics</span></label>{/if}
     {#if !fullscreen&&onfullscreen}<button type="button" class="expand" aria-label="Open fullscreen lyrics" onclick={onfullscreen}><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 4H4v5M15 4h5v5M4 15v5h5M20 15v5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>{/if}
   </header>
-  {#if error}<div class="notice" role="status">{error}<button type="button" class="pill-btn" onclick={() => retry++}>Retry</button></div>
+  {#if importNote}<div class="notice" role="status">{importNote}<button type="button" class="pill-btn" onclick={() => importNote = ''}>OK</button></div>
+  {:else if error}<div class="notice" role="status">{error}<button type="button" class="pill-btn" onclick={() => retry++}>Retry</button></div>
   {:else if !result}<div class="notice" role="status">Finding timed lyrics…</div>
-  {:else if result.kind !== "lyrics"}<div class="notice" role="status">{result.kind === "instrumental" ? "Instrumental track" : "Lyrics unavailable for this track"}</div>
+  {:else if result.kind !== "lyrics"}<div class="notice" role="status">{result.kind === "instrumental" ? "Instrumental track" : "Lyrics unavailable for this track"}{#if result.kind!=='instrumental'&&!fullscreen}<label class="pill-btn import-cta">Import .lrc<input type="file" accept=".lrc,.txt,text/plain" onchange={importFile} /></label>{/if}</div>
   {:else if !result.lines?.length}
     <div class="plain" bind:this={plainContainer} aria-label="Unsynced lyrics">{#each shownPlain as text,i (plainPage+':'+i)}<p>{preferences.lyricRomanization?romanized[text]||text:text}</p>{/each}</div>
   {:else if track.position === null || track.position === undefined}<div class="notice" role="status">Spotify hasn’t supplied a playback position yet.</div>
@@ -178,6 +197,8 @@
   button { color: inherit; background: transparent; border: 0; cursor: pointer; font: var(--type-caption); border-radius: 8px; }
   .back { width: 24px; height: 24px; font-size: 25px; line-height: 22px; padding: 0; }
   .options { display: flex; gap: 4px; }
+  .mine{flex:none;height:22px;padding:0 8px;border:0;border-radius:11px;background:var(--surface-control);color:inherit;font:600 10.5px/1 var(--font-sans);cursor:pointer;white-space:nowrap}.mine:hover{background:var(--surface-control-hover)}.minimal .mine{display:none}
+    .import{position:relative;width:24px;height:24px;display:grid;place-items:center;flex:none;border-radius:50%;cursor:pointer;opacity:.75}.import:hover{opacity:1;background:var(--surface-control-hover)}.import svg{width:17px;height:17px}.import input,.import-cta input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.import-cta{position:relative;margin-left:8px;cursor:pointer}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}.minimal .import{display:none}
   .expand{width:24px;height:24px;display:grid;place-items:center;margin-left:0;padding:3px;flex:none}.expand svg{width:18px;height:18px}
   .options button { min-height: 24px; padding: 2px 7px; }
   .sync{display:flex;align-items:center;margin-left:auto;gap:1px;flex:none}.sync button{min-width:22px;height:24px;padding:0 5px;font-variant-numeric:tabular-nums}.sync .sync-value{min-width:38px;opacity:.75}.sync .sync-value:disabled{cursor:default;background:transparent}.sync+:global(.vocal-control){margin-left:0}

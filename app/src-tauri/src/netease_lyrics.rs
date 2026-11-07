@@ -7,12 +7,12 @@ use std::time::Duration;
 const SEARCH: &str = "https://music.163.com/api/search/get";
 const LYRIC: &str = "https://music.163.com/api/song/lyric";
 
-fn fold(text: &str) -> String {
+pub(crate) fn fold(text: &str) -> String {
     text.chars().filter(|c| c.is_alphanumeric()).flat_map(char::to_lowercase).collect()
 }
 
 /// Strip "(feat. …)", "- Remastered" style decorations for matching.
-fn base_title(title: &str) -> String {
+pub(crate) fn base_title(title: &str) -> String {
     let lower = title.to_lowercase();
     let cut = [" (feat", " [feat", " feat.", " ft.", " - ", " ("].iter().filter_map(|marker| lower.find(marker)).min().unwrap_or(title.len());
     fold(&title[..cut])
@@ -21,7 +21,7 @@ fn base_title(title: &str) -> String {
 /// Credit-only lyric lines (作词/作曲/…, "Artist:", "Songs Title:") carry no sung text.
 fn is_credit(text: &str) -> bool {
     let text = text.trim();
-    ["作词", "作曲", "编曲", "制作人", "混音", "母带", "和声", "吉他", "贝斯", "鼓", "监制", "出品", "录音", "Artist", "Songs Title", "歌曲名", "艺人", "OP", "SP"]
+    ["作词", "作曲", "编曲", "制作人", "混音", "母带", "和声", "吉他", "贝斯", "鼓", "监制", "出品", "录音", "词", "曲", "Artist", "Songs Title", "歌曲名", "艺人", "OP", "SP", "Written by", "Composed by", "Lyrics by", "Produced by", "Composer", "Lyricist", "Producer"]
         .iter().any(|label| text.starts_with(label) && text[label.len()..].trim_start().starts_with([':', '：']))
 }
 
@@ -40,7 +40,7 @@ pub(crate) fn clean_lrc(lrc: &str) -> Option<String> {
     (sung >= 3).then(|| kept.join("\n"))
 }
 
-fn client() -> Result<reqwest::blocking::Client, String> {
+pub(crate) fn client() -> Result<reqwest::blocking::Client, String> {
     reqwest::blocking::Client::builder().timeout(Duration::from_secs(8)).connect_timeout(Duration::from_secs(4))
         .redirect(reqwest::redirect::Policy::none()).user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
         .build().map_err(|_| "Could not prepare the lyrics request.".to_string())

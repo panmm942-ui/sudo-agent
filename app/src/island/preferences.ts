@@ -12,7 +12,9 @@ export const SONG_COLOR_SCOPES: { id: SongColorScope; label: string }[] = [
   { id: 'all', label: 'Spotify, Home and small island' },
 ];
 
-export type SettingsTab = "general" | "look" | "island" | "home" | "alarm" | "program" | "spotify" | "marketplace" | "jarvis";
+export type SettingsTab = "general" | "look" | "island" | "home" | "alarm" | "program" | "spotify" | "marketplace" | "jarvis" | "tools";
+/** A subscribed calendar (its private iCalendar address from Google, Outlook or iCloud). */
+export type CalendarFeed = {id:string;name:string;url:string};
 export type ReminderOverride = { enabled?: boolean; time?: string };
 export type ProgramEntry = {id:string;label:string;detail:string;time:string;days:number[];enabled:boolean};
 
@@ -90,7 +92,20 @@ export type Preferences = {
   homeCity: string;
   checkUpdates: boolean;
   focusMinutes: number;
-  compactWidget: "clock"|"reminders"|"focus"|"note";
+  compactWidget: "clock"|"reminders"|"focus"|"note"|"system";
+  /** Clipboard history (Tools tab); private entries from password managers are never kept. */
+  clipboardHistory: boolean;
+  /** Claude Code permission prompts appear on the island. */
+  agentApprovals: boolean;
+  /** A short notice when a long coding-agent turn finishes. */
+  agentNotices: boolean;
+  /** The island's edges pulse with the music. */
+  reactiveEdges: boolean;
+  edgeIntensity: number;
+  calendars: CalendarFeed[];
+  /** Minutes before an event that its notice appears (0 = at the start). */
+  calendarLead: number;
+  calendarNotices: boolean;
   compactTab: string;
   tabs: TabPackage[];
   disabledTabs:string[];
@@ -116,7 +131,8 @@ export const DEFAULTS: Preferences = {
   islandBorder: "glass",islandDesign:"standard",
   islandDarkness: 50,
   islandTransparency: 0, homeWidgets: ['clock','reminders'], homeNote: '', homeCity: '', checkUpdates: false,
-  focusMinutes:25,compactWidget:"reminders",compactTab:"auto",tabs:[],disabledTabs:[],catalogueRepository:DEFAULT_REPOSITORY,
+  focusMinutes:25,compactWidget:"reminders",clipboardHistory:true,agentApprovals:true,agentNotices:true,reactiveEdges:true,edgeIntensity:60,
+  calendars:[],calendarLead:10,calendarNotices:true,compactTab:"auto",tabs:[],disabledTabs:[],catalogueRepository:DEFAULT_REPOSITORY,
   backgroundBlur: 0, showFps: false, screenshotMode: false, program: null,
 };
 
@@ -129,11 +145,14 @@ export function loadPreferences(storage: Pick<Storage, "getItem">): Preferences 
     if (!saved || typeof saved !== "object") return { ...DEFAULTS };
     const result = { ...DEFAULTS };
     const switches = ["showFps", "alarms", "iphoneAlarms", "gradualSleep", "pauseSpotify", "resumeSpotify", "hoverExpand",
-      "interfaceSounds", "reduceMotion", "rememberPage", "waves", "video", "spotifyBridge", "videoCanvasFallback", "videoHideArtwork", "videoPauseWithSong", "spotifyShowRepeat", "spotifyShowShuffle", "spotifyMarquee", "spotifySeekBar", "homeArtwork", "alarmFade", "reactiveWaves", "edgeAvoidance", "lyricTranslation", "lyricRomanization"] as const;
+      "interfaceSounds", "reduceMotion", "rememberPage", "waves", "video", "spotifyBridge", "videoCanvasFallback", "videoHideArtwork", "videoPauseWithSong", "spotifyShowRepeat", "spotifyShowShuffle", "spotifyMarquee", "spotifySeekBar", "homeArtwork", "alarmFade", "reactiveWaves", "edgeAvoidance", "lyricTranslation", "lyricRomanization", "clipboardHistory", "agentApprovals", "agentNotices", "reactiveEdges", "calendarNotices"] as const;
     for (const key of switches) if (typeof saved[key] === "boolean") result[key] = saved[key];
     if(typeof saved.catalogueRepository==='string'){try{result.catalogueRepository=repositoryName(saved.catalogueRepository);}catch{}}
     if(typeof saved.focusMinutes==='number'&&Number.isFinite(saved.focusMinutes))result.focusMinutes=Math.max(1,Math.min(180,Math.round(saved.focusMinutes)));
-    if(['clock','reminders','focus','note'].includes(saved.compactWidget??''))result.compactWidget=saved.compactWidget!;
+    if(['clock','reminders','focus','note','system'].includes(saved.compactWidget??''))result.compactWidget=saved.compactWidget!;
+    if(typeof saved.edgeIntensity==='number'&&Number.isFinite(saved.edgeIntensity))result.edgeIntensity=Math.max(0,Math.min(100,Math.round(saved.edgeIntensity)));
+    if([0,5,10,15,30].includes(saved.calendarLead??-1))result.calendarLead=saved.calendarLead!;
+    if(Array.isArray(saved.calendars))result.calendars=saved.calendars.slice(0,10).filter((c):c is CalendarFeed=>!!c&&typeof c==='object'&&typeof c.id==='string'&&typeof c.url==='string'&&/^(https?|webcal):\/\//i.test(c.url)&&c.url.length<=2000).map(c=>({id:c.id.slice(0,64),name:typeof c.name==='string'&&c.name.trim()?c.name.trim().slice(0,60):'Calendar',url:c.url.trim()}));
     if(Array.isArray(saved.tabs))result.tabs=saved.tabs.slice(0,12).flatMap(value=>{try{return [validateTab(value)];}catch{return [];}}).filter((tab,i,all)=>all.findIndex(t=>t.id===tab.id)===i);
     if(typeof saved.compactTab==='string'&&(['auto','home','spotify'].includes(saved.compactTab)||result.tabs.some(t=>'tab:'+t.id===saved.compactTab)))result.compactTab=saved.compactTab;
     if(typeof saved.lyricFlow==='boolean')result.lyricFlow=saved.lyricFlow;

@@ -1,7 +1,7 @@
 export const HOME_WIDGETS = [
   {id:'clock',label:'Clock & date'}, {id:'greeting',label:'Greeting'}, {id:'reminders',label:'Upcoming reminder'},
   {id:'focus',label:'Focus timer'}, {id:'note',label:'Personal note'}, {id:'weather',label:'Weather'},
-  {id:'battery',label:'Battery'},
+  {id:'battery',label:'Battery'}, {id:'system',label:'CPU, memory & GPU'},
 ] as const;
 export type HomeWidget = typeof HOME_WIDGETS[number]['id'];
 export type FocusTimer = {remaining:number;deadline:number|null};

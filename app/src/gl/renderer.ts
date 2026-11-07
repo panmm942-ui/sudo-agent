@@ -54,6 +54,9 @@ export class GlassRenderer {
   private darkening = 0;
   /** 0 = Sudo glass, 1 = Glisse liquid glass; eased by the caller for a smooth switch. */
   glisse = 0;
+  /** Music-reactive edge glow (0..1) and its sRGB colour. */
+  private pulse = 0;
+  private pulseRgb: [number, number, number] = [1, 1, 1];
   private opacity = 1;
   private blur = 0;
   /** Mean luminance (0..1) of the current backdrop; null without one. */
@@ -120,6 +123,11 @@ export class GlassRenderer {
     this.backdropRect = rect ? [rect.x, rect.y, rect.w, rect.h] : null;
   }
 
+  setPulse(amount: number, rgb: [number, number, number] = [1, 1, 1]): void {
+    this.pulse = Math.max(0, Math.min(1, amount));
+    this.pulseRgb = rgb;
+  }
+
   setAccent(oklch: [number, number, number]): void {
     this.accent = oklch;
   }
@@ -167,6 +175,8 @@ export class GlassRenderer {
     gl.uniform1f(u.u_opacity, this.opacity);
     gl.uniform1f(u.u_blur, this.blur / 100);
     gl.uniform1f(u.u_glisse, this.glisse);
+    gl.uniform1f(u.u_pulse, this.pulse);
+    gl.uniform3f(u.u_pulseColor, ...this.pulseRgb);
     gl.uniform1i(u.u_hasBackdrop, this.backdrop ? 1 : 0);
     gl.uniform1i(u.u_bgra, this.backdrop && "data" in this.backdrop && this.backdrop.bgra ? 1 : 0);
     gl.uniform4f(u.u_backdropRect, ...(this.backdropRect ?? [0, 0, cw, ch]));
@@ -241,7 +251,7 @@ export class GlassRenderer {
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     const names = [
       "u_viewport", "u_dpr", "u_center", "u_size", "u_radius", "u_backdrop",
-      "u_hasBackdrop", "u_bgra", "u_backdropRect", "u_tint", "u_colored", "u_outline", "u_darkening", "u_opacity", "u_blur", "u_glisse",
+      "u_hasBackdrop", "u_bgra", "u_backdropRect", "u_tint", "u_colored", "u_outline", "u_darkening", "u_opacity", "u_blur", "u_glisse", "u_pulse", "u_pulseColor",
     ];
     this.u = Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(this.program, n)]));
     if (this.backdrop) this.upload(this.backdrop);

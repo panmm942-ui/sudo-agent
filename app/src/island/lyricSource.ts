@@ -2,8 +2,17 @@ import {invoke} from '@tauri-apps/api/core';
 import {fetchLyrics,type LyricsResult} from './lyrics';
 import type {SpotifyTrack} from './spotify';
 import {parseLrc,timedWords,type TimedLine} from './lyricTiming';
+import {importedLyrics} from './importedLyrics';
 type Track=Pick<SpotifyTrack,'key'|'title'|'artist'|'album'|'duration'>;
-type Options={provider?:(track:Track,signal:AbortSignal,get?:typeof fetch,force?:boolean)=>Promise<LyricsResult>;local?:(track:Track)=>Promise<unknown>;extra?:(track:Track)=>Promise<string|null>;now?:()=>number};
+type Options={provider?:(track:Track,signal:AbortSignal,get?:typeof fetch,force?:boolean)=>Promise<LyricsResult>;local?:(track:Track)=>Promise<unknown>;extra?:(track:Track)=>Promise<string|null>;imported?:(track:Track)=>string|null;now?:()=>number};
+/** An imported file: timed LRC, or plain text shown as unsynced lyrics. */
+export function importedLyricsResult(text:string|null|undefined):LyricsResult|null{
+ if(typeof text!=='string'||!text.trim())return null;
+ const timed=extraLyricsResult(text);
+ if(timed)return timed;
+ const plain=text.split(/\r?\n/).map(line=>line.replace(/^\[[^\]]*\]/,'').trim()).join('\n').trim();
+ return plain?{kind:'lyrics',text:plain}:null;
+}
 /** Timed lyrics from the optional second source, when it matched this exact song. */
 export function extraLyricsResult(lrc:string|null|undefined):LyricsResult|null{
  if(typeof lrc!=='string'||!lrc.trim())return null;
@@ -37,7 +46,13 @@ export function createLyricsSource(update:(result:LyricsResult|null,error?:strin
  const provider=options.provider??fetchLyrics;
  const local=options.local??((track:Track)=>invoke<unknown>('spotify_bridge_snapshot',{trackKey:track.key,title:track.title,artist:track.artist,album:track.album??null,duration:track.duration??null}));
  const now=options.now??Date.now;
- const extra=options.extra??((track:Track)=>typeof track.duration==='number'?invoke<string|null>('netease_lyrics',{title:track.title,artist:track.artist,duration:track.duration}):Promise.resolve(null));
+ // Second sources, in order: NetEase, then Kugou and QQ Music (more_lyrics).
+ const extra=options.extra??(async(track:Track)=>{
+  if(typeof track.duration!=='number')return null;
+  const args={title:track.title,artist:track.artist,duration:track.duration};
+  return (await invoke<string|null>('netease_lyrics',args).catch(()=>null))??(await invoke<string|null>('more_lyrics',args).catch(()=>null));
+ });
+ const imported=options.imported??((track:Track)=>{try{return importedLyrics(track.key);}catch{return null;}});
  let identity:string|null=null,stopped=false;
  let cancel:(()=>void)|undefined;
  return {
@@ -53,6 +68,9 @@ export function createLyricsSource(update:(result:LyricsResult|null,error?:strin
    const timeout=setTimeout(()=>controller.abort(),12_000);
    cancel=()=>{disposed=true;controller.abort();clearTimeout(timeout);clearTimeout(pollTimer);};
    if(changed)update(null);
+   // Lyrics the user imported for this song win over every source.
+   const own=importedLyricsResult(imported(metadata));
+   if(own){clearTimeout(timeout);update(own);return;}
    // When the main source has no timing, a second source may still have it.
    const fallback=async()=>{try{return extraLyricsResult(await extra(metadata));}catch{return null;}};
    void provider(metadata,controller.signal,fetch,force).then(async value=>{
